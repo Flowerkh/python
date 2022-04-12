@@ -14,15 +14,18 @@ import time
 # 인자값을 받을 수 있는 인스턴스 생성
 parser = argparse.ArgumentParser(description='네이버 스토어 자동구매 매크로 도움말 입니다.')
 # 입력받을 인자값 등록
+parser.add_argument('--target', required=False, help='타겟팅 사이트 설정')
 parser.add_argument('--time', required=False, default = 2, help='페이지 새고고침 시간 설정 [기본값 2초]')
-parser.add_argument('--count', required=False, default = 500, help='매크로 작동 횟수 설정 [기본값 9999회]')
+parser.add_argument('--count', required=False, default = 2, help='매크로 작동 횟수 설정 [기본값 9999회]')
 parser.add_argument('--option1', required=False, help='구매시 옵션1 선택이 필요한 경우 선택할 옵션을 숫자로 입력 [두번째 옵션을 선택하고자 하면 2]')
 parser.add_argument('--option2', required=False, help='구매시 옵션2 선택이 필요한 경우 선택할 옵션을 숫자로 입력 [두번째 옵션을 선택하고자 하면 2]')
 parser.add_argument('--option3', required=False, help='구매시 옵션3 선택이 필요한 경우 선택할 옵션을 숫자로 입력 [두번째 옵션을 선택하고자 하면 2]')
 args = parser.parse_args()
 
-c_path = "다운받은 chromdriver.exe 경로";
-target_url = "스마트 스토어 URL";
+c_path = "C:/Users/GECL/smartstore-macro-master/chromedriver.exe";
+target_url = "https://brand.naver.com/samlip/products/6510954368";
+if(args.target):
+    target_url = args.target
 
 def main():
 	try:
