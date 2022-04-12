@@ -6,7 +6,7 @@
 ## 사용 방법
 OS. Windows 10 기준입니다.
 
-1. `https://github.com/Flowerkh/python/edit/master/smartstore-macro-master/` 다운로드
+1. `https://minhaskamal.github.io/DownGit/#/home`에 `https://github.com/Flowerkh/python/edit/master/smartstore-macro-master/` 입력 후 Download
 2. `python-3.8.0.exe 설치`
 > ※ 설치 시 하단 Add Python 3.8 to PATH 체크
 3. `Win + R 키 입력 후 CMD 입력`
