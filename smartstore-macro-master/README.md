@@ -22,6 +22,8 @@ OS. Windows 10 기준입니다.
 > ※ 네이버 2단계 로그인 설정 시 매크로 사용 불가
 11. `스크립트 실행`
 > run_macro.py [--option1 옵션선택] [--option2 옵션선택] [--option3 옵션선택]
+12. `PyCharm 실행 > Python Concole`
+> runfile('run_macro.py')
 
 ### 주의 사항
 1. python-3.8.0.exe 설치 시 설치시 하단 Add Python 3.8 to PATH 체크
