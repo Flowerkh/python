@@ -12,7 +12,7 @@ https://discordpy.readthedocs.io/en/latest/index.html
 1. https://discord.com/developers/applications/
 2. 디스코드 개발자 포털 > 로그인
 3. New Application 봇 생성
-4. Bot > Token 생성 Copy
+4. Bot > Token 생성 Copy -> token.txt 파일 생성하여 경로에 넣기
 
 Status
 >discord.status.online: 온라인 상태로 설정합니다.<br/>
