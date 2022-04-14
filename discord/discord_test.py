@@ -42,8 +42,9 @@ class chatbot(discord.Client):
                 f.write(f"\n({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
                 print(f"({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
 
+        #도움말
         if message.content == "!help":
-            embed = discord.Embed(title="Dev KyungHa", description="문의는 오픈톡", color=discord.Color.from_rgb(114, 158, 211))
+            embed = discord.Embed(title="Dev KyungHa", description="문의는 오픈톡", color=discord.Color.from_rgb(214,234,248))
             embed.set_author(name="갱하봇",url="https://open.kakao.com/o/sMRCemVd", icon_url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
             embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
             embed.add_field(name="문의 사항", value="오픈톡 문의 : https://open.kakao.com/o/sMRCemVd", inline=True)
@@ -51,7 +52,8 @@ class chatbot(discord.Client):
             embed.set_footer(text="로그 확인 요청 : 관리자 오픈톡 문의")
             await message.channel.send(embed=embed)
             return None
-
+        
+        #청소 기능
         if message.content.startswith("!청소 "):
             purge_number = message.content.replace("!청소 ", "")
             check_purge_number = purge_number.isdigit()
