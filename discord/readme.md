@@ -1,4 +1,4 @@
-# DISCORD TEST BOT
+# DISCORD 갱하봇
 ### 개발 환경
 ```
 OS : Windows10
@@ -27,3 +27,6 @@ discord.Streaming: 방송 하는 중으로 정의합니다. 여기서 제목과 
 discord.CustomActivity: 현재 봇에서는 미지원 상태입니다.<br/>
 discord.Activity: 봇이 활동을 하고 있다고 정의합니다. 여기선 음악 듣는 중, 영상 보는 중이 이에 들어갑니다.
 
+기능
+>메세지 청소 기능
+메세지 채팅 로그 저장
