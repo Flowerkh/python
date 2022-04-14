@@ -1,12 +1,8 @@
-import datetime
-import os
 
-now = datetime.datetime.now()
-path = "./discord/log/"
-if not os.path.isdir(path):
-    os.mkdir(path)
+t = open("./discord/token.txt", "r", encoding="utf-8")
 
-f = open(path+f"chat_log_{str(now.year)}{str(now.month)}{str(now.day)}.log", 'a')
-f.write("\naa")
+lines = t.readlines()
+for line in lines:
+    read_arr = lines
 
-f.close()
+print(read_arr)

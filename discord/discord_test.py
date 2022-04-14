@@ -5,19 +5,21 @@ import os
 
 token_path = os.path.dirname(os.path.abspath(__file__))+"/token.txt"
 t = open(token_path, "r", encoding="utf-8")
-token = t.read().split()[0]
+lines = t.readlines()
+for line in lines:
+    token = lines
 now = datetime.datetime.now()
 time = f"{str(now.year)}-{str(now.month)}-{str(now.day)} {str(now.hour)}:{str(now.minute)}:{now.second}"
-
 #봇 메인 함수
 class chatbot(discord.Client):
 
     async def on_ready(self):
-        game = discord.Game("테스트")
-        owner = client.get_user(963974593788412004)
-        await client.change_presence(status=discord.Status.online, activity=game)
-        # author = await owner.create_dm()
-        # await author.send("on_ready가 호출되었습니다.")
+        my_id = token[1]
+        activity = discord.Game(name="도움말 : !help")
+        await client.change_presence(status=discord.Status.online, activity=activity)
+        owner = await client.fetch_user(my_id)
+        await owner.send("갱하봇이 호출되었습니다.")
+        print('ready')
 
     async def on_message(self, message):
         del_message = ['시발','씨발','좃','좆','족', '새기', '새끼', '썅', '병신', '뱅신', '애미']
@@ -41,9 +43,13 @@ class chatbot(discord.Client):
                 print(f"({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
 
         if message.content == "!help":
-            channel = message.channel
-            msg = "```안녕하세요. 테스트 봇입니다.```"
-            await channel.send(msg)
+            embed = discord.Embed(title="", description="문의는 오픈톡", color=0x00ff56)
+            embed.set_author(name="갱하봇",url="https://open.kakao.com/o/sMRCemVd", icon_url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
+            embed.add_field(name="문의 사항", value="오픈톡 문의 : https://open.kakao.com/o/sMRCemVd", inline=True)
+            embed.add_field(name="사용법 : ", value="!청소 0~999 : 채널 내 입력 수만큼 메세지 삭제(권한 필요)\n!닉네임 캐릭터 정보 검색 (추가 예정)", inline=False)
+            embed.set_footer(text="로그 확인 요청 : 관리자 오픈톡 문의")
+            await message.channel.send(embed=embed)
             return None
 
         if message.content.startswith("!청소 "):
@@ -70,7 +76,6 @@ class chatbot(discord.Client):
                 await msg.delete()
                 return None
 
-
     # async def on_message_delete(message):
     #     channel = client.get_channel('로그를 남길 채널의 id(int)')
     #     embed = discord.Embed(title=f"삭제됨", description=f"유저 : {message.author.mention} 채널 : {message.channel.mention}", color=0xFF0000)
@@ -81,4 +86,4 @@ class chatbot(discord.Client):
 #봇 실행 함수
 if __name__ == "__main__":
     client = chatbot()
-    client.run(token)
+    client.run(token[0])
