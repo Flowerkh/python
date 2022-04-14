@@ -1,10 +1,12 @@
-class Bird:
-    def fly(self):
-        raise NotImplementedError
+import datetime
+import os
 
-class Eagle(Bird):
-	def fly(self):
-		print("very fast")
+now = datetime.datetime.now()
+path = "./discord/log/"
+if not os.path.isdir(path):
+    os.mkdir(path)
 
-eagle = Eagle()
-eagle.fly()
+f = open(path+f"chat_log_{str(now.year)}{str(now.month)}{str(now.day)}.log", 'a')
+f.write("\naa")
+
+f.close()
