@@ -6,13 +6,14 @@ import datetime
 import asyncio
 import os
 
+now = datetime.datetime.now()
+time = f"{str(now.year)}-{str(now.month)}-{str(now.day)} {str(now.hour)}:{str(now.minute)}:{now.second}"
+
 token_path = os.path.dirname(os.path.abspath(__file__))+"/token.txt"
 t = open(token_path, "r", encoding="utf-8")
 lines = t.readlines()
 for line in lines:
     token = lines
-now = datetime.datetime.now()
-time = f"{str(now.year)}-{str(now.month)}-{str(now.day)} {str(now.hour)}:{str(now.minute)}:{now.second}"
 
 #봇 메인 함수
 class chatbot(discord.Client):
@@ -30,7 +31,7 @@ class chatbot(discord.Client):
         del_message_auth = ['9889']
         path = "./log/"
         if not os.path.isdir(path): os.mkdir(path)
-        f = open(path + f"chat_log_{str(now.year)}{str(now.month)}{str(now.day)}.log", 'a')
+        f = open(path + f"chat_log_{str(now.year)}{str(now.month)}{str(now.day)}.log", 'a', encoding='utf-8')
 
         # 상대가 bot일 경우 응답하지 않음
         if message.author.bot:
@@ -70,7 +71,7 @@ class chatbot(discord.Client):
                 else:
                     await message.channel.send("올바른 값을 입력해주세요. ex)!청소 0~999")
             else:
-                msg = await message.channel.send("청소 권한이 없습니다.")
+                await message.channel.send("청소 권한이 없습니다.")
 
         # 검색
         if message.content.startswith("!로아 "):
@@ -83,7 +84,14 @@ class chatbot(discord.Client):
                     soup = BeautifulSoup(html, 'html.parser')
                     char_stat = []
                     char_jem = []
+                    jem_lev_list = []
+                    user_jem_lev = []
+                    jem_lev = {
+                        '2.00% 감소': 1, '4.00% 감소': 2, '6.00% 감소': 3, '8.00% 감소': 4, '10.00% 감소': 5, '12.00% 감소': 6,'14.00% 감소': 7, '16.00% 감소': 8, '18.00% 감소': 9, '20.00% 감소': 10,
+                        '3.00% 증가': 1, '6.00% 증가': 2, '9.00% 증가': 3, '12.00% 증가': 4, '15.00% 증가': 5, '18.00% 증가': 6,'21.00% 증가': 7, '40.00% 증가': 8, '30.00% 증가': 9, '40.00% 증가': 10
+                    }
                     # 캐릭터 정보
+                    # embed = discord 노출
                     char_img = soup.select_one('#lostark-wrapper > div > main > div > div.profile-character-info > img').get('src')
                     char_honor = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.game-info > div.game-info__title > span:nth-child(2)').get_text()  # 칭호
                     char_wj_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info > div.level-info__expedition > span:nth-child(2)').get_text().replace('Lv.', '')  # 원정대
@@ -105,11 +113,20 @@ class chatbot(discord.Client):
                         jewl_list = char_jewel.findAll("p")
                         for jewel in jewl_list:
                             char_jem.append(re.sub('<.+?>', '', str(jewel)))
-                        embed.add_field(name="보석", value=('\n').join(char_jem), inline=False)
+                            jem_lev_list.append(re.sub('<.+?>', '', str(jewel))[-9:])
+                        cnt = 0
+                        for lev in jem_lev_list:
+                            if (lev.find('감소') > 0):
+                                user_jem_lev.append(f"홍염 {jem_lev[lev]} : {char_jem[cnt]}")
+                            else:
+                                user_jem_lev.append(f"멸화 {jem_lev[lev]} : {char_jem[cnt]}")
+                            cnt += 1
+                        embed.add_field(name="보석", value=('\n').join(user_jem_lev), inline=False)
                     except Exception as e:
                         embed.add_field(name="보석", value='보석이 없습니다.', inline=False)
+
                     embed.set_footer(text="※ 현재 티어3 기준으로 개발되어있습니다.")
-                    # 출력
+                    # discord 출력
                     await message.channel.send(embed=embed)
                 except Exception as e:
                     msg = await message.channel.send(f"{char_name} : 닉네임을 다시 확인해주세요.")

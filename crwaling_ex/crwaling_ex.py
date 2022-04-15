@@ -11,6 +11,8 @@ if response.status_code == 200:
     soup = BeautifulSoup(html, 'html.parser')
     char_stat = []
     char_jem = []
+    jem_lev_list = []
+    user_jem_lev = []
     char_img = soup.select_one('#lostark-wrapper > div > main > div > div.profile-character-info > img').get('src')
     char_honor = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.game-info > div.game-info__title > span:nth-child(2)') #칭호
     char_wj_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info > div.level-info__expedition > span:nth-child(2)') #원정대
@@ -27,6 +29,7 @@ if response.status_code == 200:
         jewl_list = char_jewel.findAll("p")
         for jewel in jewl_list:
             char_jem.append(re.sub('<.+?>', '', str(jewel)))
+            jem_lev_list.append(re.sub('<.+?>', '', str(jewel))[-9:])
     except Exception as e:
         pass
 
@@ -34,6 +37,14 @@ if response.status_code == 200:
         pass
     else:
         char_jem = '보석이 없습니다.'
-    print(('\n').join(char_jem))
+
+    jem_lev = {
+        '2.00% 감소':1,'4.00% 감소':2,'6.00% 감소':3,'8.00% 감소':4,'10.00% 감소':5,'12.00% 감소':6,'14.00% 감소':7,'16.00% 감소':8,'18.00% 감소':9,'20.00% 감소':10,
+        '3.00% 증가':1,'6.00% 증가':2,'9.00% 증가':3,'12.00% 증가':4,'15.00% 증가':5,'18.00% 증가':6,'21.00% 증가':7,'40.00% 증가':8,'30.00% 증가':9,'40.00% 증가':10
+    }
+
+
+
+    print(('\n').join(user_jem_lev))
 else:
     print(response.status_code)
