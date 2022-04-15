@@ -13,6 +13,7 @@ for line in lines:
     token = lines
 now = datetime.datetime.now()
 time = f"{str(now.year)}-{str(now.month)}-{str(now.day)} {str(now.hour)}:{str(now.minute)}:{now.second}"
+
 #봇 메인 함수
 class chatbot(discord.Client):
 
@@ -42,20 +43,19 @@ class chatbot(discord.Client):
                     print(f"({time}) {message.channel} : {message.content}")
                     f.write(f"\n({time}) {message.channel} : {message.content}")
             except Exception as e:
-                f.write(f"\n({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
                 print(f"({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
+                f.write(f"\n({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
 
         #도움말
         if message.content == "!help":
             embed = discord.Embed(title="Dev KyungHa", description="문의는 오픈톡", color=discord.Color.from_rgb(214,234,248))
             embed.set_author(name="갱하봇",url="https://open.kakao.com/o/sMRCemVd", icon_url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
             embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
-            embed.add_field(name="문의 사항", value="오픈톡 문의 : https://open.kakao.com/o/sMRCemVd", inline=True)
+            embed.add_field(name="문의 사항", value="오픈톡 문의 : https://open.kakao.com/o/sMRCemVd", inline=False)
             embed.add_field(name="사용법 : ", value="!청소 0~999 : 채널 내 입력 수만큼 메세지 삭제(권한 필요)\n!로아 닉네임 (로아와 검색 > 개발중)", inline=False)
             embed.set_footer(text="로그 확인 요청 : 관리자 오픈톡 문의")
             await message.channel.send(embed=embed)
-            return None
-        
+
         #청소 기능
         if message.content.startswith("!청소 "):
             purge_number = message.content.replace("!청소 ", "")
@@ -71,11 +71,8 @@ class chatbot(discord.Client):
                     await message.channel.send("올바른 값을 입력해주세요. ex)!청소 0~999")
             else:
                 msg = await message.channel.send("청소 권한이 없습니다.")
-                await asyncio.sleep(3)
-                await msg.delete()
-            return None
 
-        #검색
+        # 검색
         if message.content.startswith("!로아 "):
             char_name = message.content.replace("!로아 ", "")
             url = 'https://lostark.game.onstove.com/Profile/Character/' + char_name
@@ -86,7 +83,7 @@ class chatbot(discord.Client):
                     soup = BeautifulSoup(html, 'html.parser')
                     char_stat = []
                     char_jem = []
-                    #캐릭터 정보
+                    # 캐릭터 정보
                     char_img = soup.select_one('#lostark-wrapper > div > main > div > div.profile-character-info > img').get('src')
                     char_honor = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.game-info > div.game-info__title > span:nth-child(2)').get_text()  # 칭호
                     char_wj_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info > div.level-info__expedition > span:nth-child(2)').get_text().replace('Lv.', '')  # 원정대
@@ -102,7 +99,7 @@ class chatbot(discord.Client):
                     embed = discord.Embed(title=f"[Lv. {char_ft_lv} | {char_honor}] {char_name}", description=f"{char_item_lv} | 원정대 : {char_wj_lv}")
                     embed.set_author(name="전투정보실", url=url, icon_url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
                     embed.set_thumbnail(url=char_img)
-                    embed.add_field(name="특성", value=f"최대생명력 : {char_hp}\n{char_stat[0]}:{char_stat[1]}\t\t{char_stat[2]}:{char_stat[3]}\t\t{char_stat[6]}:{char_stat[7]}\n{char_stat[4]}:{char_stat[5]}\t\t{char_stat[8]}:{char_stat[9]}\t\t{char_stat[10]}:{char_stat[11]}", inline=False)
+                    embed.add_field(name="특성",value=f"최대생명력 : {char_hp}\n{char_stat[0]}:{char_stat[1]}\t\t{char_stat[2]}:{char_stat[3]}\t\t{char_stat[6]}:{char_stat[7]}\n{char_stat[4]}:{char_stat[5]}\t\t{char_stat[8]}:{char_stat[9]}\t\t{char_stat[10]}:{char_stat[11]}", inline=False)
                     try:
                         char_jewel = soup.select_one('#profile-jewel > div > div.jewel-effect__list > div > ul')
                         jewl_list = char_jewel.findAll("p")
@@ -112,7 +109,7 @@ class chatbot(discord.Client):
                     except Exception as e:
                         embed.add_field(name="보석", value='보석이 없습니다.', inline=False)
                     embed.set_footer(text="※ 현재 티어3 기준으로 개발되어있습니다.")
-                    #출력
+                    # 출력
                     await message.channel.send(embed=embed)
                 except Exception as e:
                     msg = await message.channel.send(f"{char_name} : 닉네임을 다시 확인해주세요.")
@@ -120,7 +117,6 @@ class chatbot(discord.Client):
                     await msg.delete()
             else:
                 print(response.status_code)
-            return None
 
         #비속어 필터
         for val in del_message:
@@ -130,13 +126,6 @@ class chatbot(discord.Client):
                 await asyncio.sleep(3)
                 await msg.delete()
                 return None
-
-    # async def on_message_delete(message):
-    #     channel = client.get_channel('로그를 남길 채널의 id(int)')
-    #     embed = discord.Embed(title=f"삭제됨", description=f"유저 : {message.author.mention} 채널 : {message.channel.mention}", color=0xFF0000)
-    #     embed.add_field(name="삭제된 내용", value=f"내용 : {message.content}", inline=False)
-    #     embed.set_footer(text=f"{message.guild.name} | {time}")
-    #     await channel.send(embed=embed)
 
 #봇 실행 함수
 if __name__ == "__main__":
