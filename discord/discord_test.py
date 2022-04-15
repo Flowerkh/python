@@ -99,6 +99,8 @@ class chatbot(discord.Client):
                     char_item_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info2 > div.level-info2__expedition > span:nth-child(2)').get_text().replace('Lv.', '')  # 아이템
                     char_hp = soup.select_one('#profile-ability > div.profile-ability-basic > ul > li:nth-child(2) > span:nth-child(2)').get_text()  # 최생
                     char_stat_list = soup.select_one('#profile-ability > div.profile-ability-battle > ul')  # status
+                    char_card_set1 = soup.select('#cardSetList > li > div.card-effect__title') #card_setting
+                    char_card_set2 = soup.select('#cardSetList > li > div.card-effect__dsc') #card_option
                     lis = char_stat_list.findAll("span")
                     for li in lis:
                         li = re.sub('<.+?>', '', str(li))
@@ -124,8 +126,12 @@ class chatbot(discord.Client):
                         embed.add_field(name="보석", value=('\n').join(user_jem_lev), inline=False)
                     except Exception as e:
                         embed.add_field(name="보석", value='보석이 없습니다.', inline=False)
+                    try:
+                        embed.add_field(name="카드", value=f"{re.sub('<.+?>', '', str(char_card_set1.pop()))} : {re.sub('<.+?>', '', str(char_card_set2.pop()))}", inline=False)
+                    except Exception as e:
+                        embed.add_field(name="카드", value='장착중인 카드 효과가 없습니다.', inline=False)
 
-                    embed.set_footer(text="※ 현재 티어3 기준으로 개발되어있습니다.")
+                    embed.set_footer(text="※ 현재 티어3 기준으로 개발되어있습니다.\n※ 카드 효과는 가독성을 위하여 최종 적용되는 효과만 나타납니다.")
                     # discord 출력
                     await message.channel.send(embed=embed)
                 except Exception as e:

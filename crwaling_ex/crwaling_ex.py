@@ -20,6 +20,7 @@ if response.status_code == 200:
     char_item_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info2 > div.level-info2__expedition > span:nth-child(2)') #아이템
     char_hp = soup.select_one('#profile-ability > div.profile-ability-basic > ul > li:nth-child(2) > span:nth-child(2)') #최생
     char_stat_list = soup.select_one('#profile-ability > div.profile-ability-battle > ul') #status
+
     lis = char_stat_list.findAll("span")
     for li in lis:
         li = re.sub('<.+?>', '',str(li))
@@ -43,8 +44,10 @@ if response.status_code == 200:
         '3.00% 증가':1,'6.00% 증가':2,'9.00% 증가':3,'12.00% 증가':4,'15.00% 증가':5,'18.00% 증가':6,'21.00% 증가':7,'40.00% 증가':8,'30.00% 증가':9,'40.00% 증가':10
     }
 
-
-
-    print(('\n').join(user_jem_lev))
+    char_card_set1 = soup.select('#cardSetList > li > div.card-effect__title')
+    char_card_set2 = soup.select('#cardSetList > li > div.card-effect__dsc')
+    print(char_card_set2)
+    print(re.sub('<.+?>', '', str(char_card_set1.pop())))
+    #print(char_card_set)
 else:
     print(response.status_code)
