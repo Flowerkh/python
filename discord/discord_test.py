@@ -91,12 +91,26 @@ class chatbot(discord.Client):
                     c_engraving = []
                     jem_lev = {
                         '2.00% 감소': 1, '4.00% 감소': 2, '6.00% 감소': 3, '8.00% 감소': 4, '10.00% 감소': 5, '12.00% 감소': 6,'14.00% 감소': 7, '16.00% 감소': 8, '18.00% 감소': 9, '20.00% 감소': 10,
-                        '3.00% 증가': 1, '6.00% 증가': 2, '9.00% 증가': 3, '12.00% 증가': 4, '15.00% 증가': 5, '18.00% 증가': 6,'21.00% 증가': 7, '40.00% 증가': 8, '30.00% 증가': 9, '40.00% 증가': 10
+                        '3.00% 증가': 1, '6.00% 증가': 2, '9.00% 증가': 3, '12.00% 증가': 4, '15.00% 증가': 5, '18.00% 증가': 6,'21.00% 증가': 7, '24.00% 증가': 8, '30.00% 증가': 9, '40.00% 증가': 10
+                    }
+                    char_skill = {
+                        "버서커": "순간 받는 피해 12% 증가", "데모닉": "순간 받는 피해 12% 증가",
+                        "워로드": "순간 받는 피해 3% 증가\n상시 몬스터 방어력 감소 12%\n순간 백&헤드 데미지 9% 증가\n정화(상태이상 해제/넬라시아의 기운)",
+                        "인파이터": "상시 받는 피해 6% 증가", "호크아이": "상시 받는 피해 6% 증가", "소서리스": "상시 받는 피해 6% 증가",
+                        "블레이드": "상시 받는 피해 3%증가\n상시 백&헤드 데미지 9% 증가",
+                        "창술사": "순간 치명타 적중률 18%", "배틀마스터": "순간 치명타 적중률 18%", "스트라이커": "순간 치명타 적중률 18%",
+                        "데빌헌터": "상시 치명타 적중률 10%", "건슬링어": "상시 치명타 적중률 10%", "아르카나": "상시 치명타 적중률 10%",
+                        "기공사": "상시 공격력 6%증가\n정화(상태이상 해제/내공 방출)", "스카우터": "상시 공격력 6%증가",
+                        "디스트로이어": "순간 몬스터 방어력 감소 24%", "서머너": "순간 몬스터 방어력 감소 24%\n정화(상태이상 해제/레이네의 가호)",
+                        "블래스터": "상시 몬스터 방어력 감소 12%",
+                        "리퍼": "상시 치명타 피해 20% 증가",
+                        "홀리나이트": "정화(상태이상 해제/신성한 보호)"
                     }
 
                     # 캐릭터 정보
                     # embed = discord 노출
                     char_img = soup.select_one('#lostark-wrapper > div > main > div > div.profile-character-info > img').get('src')
+                    char_job = soup.select_one('#lostark-wrapper > div > main > div > div.profile-character-info > img').get('alt')
                     char_honor = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.game-info > div.game-info__title > span:nth-child(2)').get_text()  # 칭호
                     char_wj_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info > div.level-info__expedition > span:nth-child(2)').get_text().replace('Lv.', '')  # 원정대
                     char_ft_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info > div.level-info__item > span:nth-child(2)').get_text().replace('Lv.', '')  # 전투
@@ -105,13 +119,14 @@ class chatbot(discord.Client):
                     char_card_set1 = soup.select('#cardSetList > li > div.card-effect__title') #card_setting
                     char_card_set2 = soup.select('#cardSetList > li > div.card-effect__dsc') #card_option
                     char_ability = soup.select('#profile-ability > div.profile-ability-engrave > div.swiper-container > div.swiper-wrapper > ul.swiper-slide > li > span')
+
                     char_stat_list = soup.select_one('#profile-ability > div.profile-ability-battle > ul')  # status
                     lis = char_stat_list.findAll("span")
                     for li in lis:
                         li = re.sub('<.+?>', '', str(li))
                         char_stat.append(li)
 
-                    embed = discord.Embed(title=f"[Lv. {char_ft_lv} | {char_honor}] {char_name}", description=f"{char_item_lv} | 원정대 : {char_wj_lv}")
+                    embed = discord.Embed(title=f"[Lv. {char_ft_lv} | {char_honor}] {char_name}", description=f"{char_item_lv} | 원정대 : {char_wj_lv} | 시너지 : {char_skill[char_job] if char_skill.get(char_job) != None else '시너지가 없습니다.'}")
                     embed.set_author(name="전투정보실", url=url, icon_url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
                     embed.set_thumbnail(url=char_img)
                     embed.add_field(name="특성",value=f"최대생명력 : {char_hp}\n{char_stat[0]}:{char_stat[1]}\t\t{char_stat[2]}:{char_stat[3]}\t\t{char_stat[6]}:{char_stat[7]}\n{char_stat[4]}:{char_stat[5]}\t\t{char_stat[8]}:{char_stat[9]}\t\t{char_stat[10]}:{char_stat[11]}", inline=True)
@@ -136,12 +151,8 @@ class chatbot(discord.Client):
                             else:
                                 user_jem_lev.append(f"멸화 {jem_lev[lev]} : {char_jem[cnt]}")
                             cnt += 1
+                        user_jem_lev = ('\n').join(user_jem_lev)
                     except Exception as e:
-                        pass
-                    user_jem_lev = ('\n').join(user_jem_lev)
-                    if (len(char_jem) > 0):
-                        pass
-                    else:
                         user_jem_lev = '보석이 없습니다.'
                     embed.add_field(name="보석", value=user_jem_lev, inline=False)
 
