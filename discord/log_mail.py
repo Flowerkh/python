@@ -21,12 +21,14 @@ smtp_imfo = dict({
     'smtp_user_pw': token[1],
     'smtp_port': 587,
 })
+recipients = ["cdffee1@naver.com"]
+#smtp 접속
 smtp = smtplib.SMTP(smtp_imfo['smtp_server'], smtp_imfo['smtp_port'])
 smtp.ehlo()
 smtp.starttls()
 smtp.login(token[0].strip(),token[1])
 
-recipients = ["cdffee1@naver.com"]
+#메일 내용
 message = MIMEMultipart()
 message['Subject'] = f'{yesterday.strftime("%Y-%m-%d")} 로그 기록 전송'
 message['From'] = 'qbxlrudgk1@gmail.com'
@@ -36,7 +38,7 @@ minetext = MIMEText(content, 'html')
 message.attach(minetext)
 
 #첨부 파일
-attachments = [os.path.join(os.getcwd()+'\\log\\', 'chat_log_'+today.strftime("%Y%m%d")+'.log')]
+attachments = [os.path.join(os.getcwd()+'\\log\\', 'chat_log_'+yesterday.strftime("%Y%m%d")+'.log')]
 for attachment in attachments:
     attach_binary = MIMEBase("application", "octect-stream")
     try:
