@@ -41,10 +41,8 @@ class chatbot(discord.Client):
         if(message.author.id != 963969512863039508):
             try:
                 if(message.channel.recipient):
-                    print(f"({time}) {message.channel} : {message.content}")
                     f.write(f"\n({time}) {message.channel} : {message.content}")
             except Exception as e:
-                print(f"({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
                 f.write(f"\n({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
 
         #도움말
