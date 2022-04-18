@@ -1,1 +1,3 @@
-discord/token.txt
+discord/**/*.txt
+discord/**/*.log
+mail_test/*.txt

@@ -2,13 +2,11 @@ import discord
 import requests
 from bs4 import BeautifulSoup
 import re
-import datetime
+from datetime import date, datetime
 import asyncio
 import os
 
-now = datetime.datetime.now()
-time = f"{str(now.year)}-{str(now.month)}-{str(now.day)} {str(now.hour)}:{str(now.minute)}:{now.second}"
-
+time = datetime.now()
 token_path = os.path.dirname(os.path.abspath(__file__))+"/token.txt"
 t = open(token_path, "r", encoding="utf-8")
 lines = t.readlines()
@@ -31,7 +29,7 @@ class chatbot(discord.Client):
         del_message_auth = ['9889']
         path = "./log/"
         if not os.path.isdir(path): os.mkdir(path)
-        f = open(path + f"chat_log_{str(now.year)}{str(now.month)}{str(now.day)}.log", 'a', encoding='utf-8')
+        f = open(path + f"chat_log_{time.strftime('%Y%m%d')}.log", 'a', encoding='utf-8')
 
         # 상대가 bot일 경우 응답하지 않음
         if message.author.bot:
@@ -41,9 +39,9 @@ class chatbot(discord.Client):
         if(message.author.id != 963969512863039508):
             try:
                 if(message.channel.recipient):
-                    f.write(f"\n({time}) {message.channel} : {message.content}")
+                    f.write(f"\n({time.strftime('%Y-%m-%d %H:%M:%S')}) {message.channel} : {message.content}")
             except Exception as e:
-                f.write(f"\n({time}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
+                f.write(f"\n({time.strftime('%Y-%m-%d %H:%M:%S')}) 채널[{message.guild.name}>{message.channel}]{message.author.name}({message.author.id}) : {message.content}")
 
         #도움말
         if message.content == "!help":
