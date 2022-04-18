@@ -53,7 +53,7 @@ class chatbot(discord.Client):
             embed.set_author(name="갱하봇",url="https://open.kakao.com/o/sMRCemVd", icon_url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
             embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
             embed.add_field(name="문의 사항", value="오픈톡 문의 : https://open.kakao.com/o/sMRCemVd", inline=False)
-            embed.add_field(name="사용법 : ", value="!청소 0~999 : 채널 내 입력 수만큼 메세지 삭제(권한 필요)\n!로아 닉네임 (로아와 검색 > 개발중)", inline=False)
+            embed.add_field(name="사용법 : ", value="!청소 0~999 : 채널 내 입력 수만큼 메세지 삭제(권한 필요)\n!로아 닉네임 (로아 캐릭터 검색)", inline=False)
             embed.set_footer(text="로그 확인 요청 : 관리자 오픈톡 문의")
             await message.channel.send(embed=embed)
 
@@ -78,6 +78,7 @@ class chatbot(discord.Client):
             char_name = message.content.replace("!로아 ", "")
             url = 'https://lostark.game.onstove.com/Profile/Character/' + char_name
             response = requests.get(url)
+
             if response.status_code == 200:
                 try:
                     html = response.text
@@ -86,10 +87,13 @@ class chatbot(discord.Client):
                     char_jem = []
                     jem_lev_list = []
                     user_jem_lev = []
+                    card_option = []
+                    c_engraving = []
                     jem_lev = {
                         '2.00% 감소': 1, '4.00% 감소': 2, '6.00% 감소': 3, '8.00% 감소': 4, '10.00% 감소': 5, '12.00% 감소': 6,'14.00% 감소': 7, '16.00% 감소': 8, '18.00% 감소': 9, '20.00% 감소': 10,
                         '3.00% 증가': 1, '6.00% 증가': 2, '9.00% 증가': 3, '12.00% 증가': 4, '15.00% 증가': 5, '18.00% 증가': 6,'21.00% 증가': 7, '40.00% 증가': 8, '30.00% 증가': 9, '40.00% 증가': 10
                     }
+
                     # 캐릭터 정보
                     # embed = discord 노출
                     char_img = soup.select_one('#lostark-wrapper > div > main > div > div.profile-character-info > img').get('src')
@@ -98,9 +102,10 @@ class chatbot(discord.Client):
                     char_ft_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info > div.level-info__item > span:nth-child(2)').get_text().replace('Lv.', '')  # 전투
                     char_item_lv = soup.select_one('#lostark-wrapper > div > main > div > div.profile-ingame > div.profile-info > div.level-info2 > div.level-info2__expedition > span:nth-child(2)').get_text().replace('Lv.', '')  # 아이템
                     char_hp = soup.select_one('#profile-ability > div.profile-ability-basic > ul > li:nth-child(2) > span:nth-child(2)').get_text()  # 최생
-                    char_stat_list = soup.select_one('#profile-ability > div.profile-ability-battle > ul')  # status
                     char_card_set1 = soup.select('#cardSetList > li > div.card-effect__title') #card_setting
                     char_card_set2 = soup.select('#cardSetList > li > div.card-effect__dsc') #card_option
+                    char_ability = soup.select('#profile-ability > div.profile-ability-engrave > div.swiper-container > div.swiper-wrapper > ul.swiper-slide > li > span')
+                    char_stat_list = soup.select_one('#profile-ability > div.profile-ability-battle > ul')  # status
                     lis = char_stat_list.findAll("span")
                     for li in lis:
                         li = re.sub('<.+?>', '', str(li))
@@ -109,7 +114,15 @@ class chatbot(discord.Client):
                     embed = discord.Embed(title=f"[Lv. {char_ft_lv} | {char_honor}] {char_name}", description=f"{char_item_lv} | 원정대 : {char_wj_lv}")
                     embed.set_author(name="전투정보실", url=url, icon_url="https://cdn-icons-png.flaticon.com/512/7281/7281002.png")
                     embed.set_thumbnail(url=char_img)
-                    embed.add_field(name="특성",value=f"최대생명력 : {char_hp}\n{char_stat[0]}:{char_stat[1]}\t\t{char_stat[2]}:{char_stat[3]}\t\t{char_stat[6]}:{char_stat[7]}\n{char_stat[4]}:{char_stat[5]}\t\t{char_stat[8]}:{char_stat[9]}\t\t{char_stat[10]}:{char_stat[11]}", inline=False)
+                    embed.add_field(name="특성",value=f"최대생명력 : {char_hp}\n{char_stat[0]}:{char_stat[1]}\t\t{char_stat[2]}:{char_stat[3]}\t\t{char_stat[6]}:{char_stat[7]}\n{char_stat[4]}:{char_stat[5]}\t\t{char_stat[8]}:{char_stat[9]}\t\t{char_stat[10]}:{char_stat[11]}", inline=True)
+                    # 각인
+                    try:
+                        for engraving in char_ability:
+                            c_engraving.append(re.sub('<.+?>', '', str(engraving)))
+                        embed.add_field(name="각인", value=('\n').join(c_engraving), inline=True)
+                    except Exception as e:
+                        embed.add_field(name="각인", value='각인이 없습니다.', inline=True)
+                    #보석
                     try:
                         char_jewel = soup.select_one('#profile-jewel > div > div.jewel-effect__list > div > ul')
                         jewl_list = char_jewel.findAll("p")
@@ -123,15 +136,24 @@ class chatbot(discord.Client):
                             else:
                                 user_jem_lev.append(f"멸화 {jem_lev[lev]} : {char_jem[cnt]}")
                             cnt += 1
-                        embed.add_field(name="보석", value=('\n').join(user_jem_lev), inline=False)
                     except Exception as e:
-                        embed.add_field(name="보석", value='보석이 없습니다.', inline=False)
+                        pass
+                    user_jem_lev = ('\n').join(user_jem_lev)
+                    if (len(char_jem) > 0):
+                        pass
+                    else:
+                        user_jem_lev = '보석이 없습니다.'
+                    embed.add_field(name="보석", value=user_jem_lev, inline=False)
+
+                    #카드 효과
                     try:
-                        embed.add_field(name="카드", value=f"{re.sub('<.+?>', '', str(char_card_set1.pop()))} : {re.sub('<.+?>', '', str(char_card_set2.pop()))}", inline=False)
+                        for i in range(0, len(char_card_set1)):
+                            card_option.append(f"{re.sub('<.+?>', '', str(char_card_set1[i]))} : {re.sub('<.+?>', '', str(char_card_set2[i]))}")
+                        embed.add_field(name="카드", value=('\n').join(card_option), inline=False)
                     except Exception as e:
                         embed.add_field(name="카드", value='장착중인 카드 효과가 없습니다.', inline=False)
 
-                    embed.set_footer(text="※ 현재 티어3 기준으로 개발되어있습니다.\n※ 카드 효과는 가독성을 위하여 최종 적용되는 효과만 나타납니다.")
+                    embed.set_footer(text="※ 현재 티어3 기준으로 개발되어있습니다.")
                     # discord 출력
                     await message.channel.send(embed=embed)
                 except Exception as e:
