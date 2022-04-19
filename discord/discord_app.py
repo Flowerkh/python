@@ -35,7 +35,7 @@ class chatbot(discord.Client):
         if message.author.bot:
             return None
 
-        #메세지 log
+        #log 남기기
         if(message.author.id != 963969512863039508):
             try:
                 if(message.channel.recipient):
