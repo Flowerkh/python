@@ -3,7 +3,6 @@ import pyautogui
 import os
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import *
-from functools import partial
 
 class khMacro(QMainWindow):
     def __init__(self):
