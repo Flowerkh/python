@@ -1,7 +1,18 @@
-from datetime import date, datetime
-import os
+import sys
+from PyQt5.QtWidgets import *
 
-today = date.today()
-now = datetime.now()
+class Mainwindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+        
+    def initUI(self):
+        self.setWindowTitle('경하의 매크로')
+        self.move(300,300)
+        self.resize(700,600)
+        self.show()
 
-print(os.path.dirname(os.path.abspath(__file__)))
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    main = Mainwindow()
+    app.exec_()
