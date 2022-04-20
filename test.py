@@ -14,6 +14,7 @@ class lineEditDemo(QWidget):
 
                 e2 = QLineEdit()
                 e2.setValidator(QDoubleValidator(0.99,99.99,2))
+
                 e3 = QLineEdit()
                 e3.setInputMask("+99_9999_999999")
 
