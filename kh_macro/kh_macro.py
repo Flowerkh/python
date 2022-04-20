@@ -1,5 +1,6 @@
 import os
 import sys
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
@@ -12,6 +13,7 @@ class WindowClass(QMainWindow, form_class) :
     def __init__(self) :
         super().__init__()
         self.setupUi(self)
+        self.GUI_main()
 
         #button event
         self.pushButton.clicked.connect(lambda :self.buttonclick('jandi'))
@@ -24,6 +26,14 @@ class WindowClass(QMainWindow, form_class) :
             os.system('"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\SQLyog - 64 bit\\SQLyog.lnk"')
         else:
             QMessageBox.about(self, 'note', '미구현 기능입니다.')
+
+    # 메인 UI
+    def GUI_main(self):
+        self.setWindowTitle('경하의 매크로')
+        self.setWindowIcon(QIcon('./img/kh_icon.png'))
+        self.move(300, 300)
+        self.setFixedSize(300, 300)  # (width,heigh)
+
 if __name__ == "__main__" :
     app = QApplication(sys.argv)
     myWindow = WindowClass()
