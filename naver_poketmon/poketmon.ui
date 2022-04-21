@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>335</width>
+    <width>331</width>
     <height>518</height>
    </rect>
   </property>
@@ -66,8 +66,7 @@
      <string>★ 사용 순서
 1. [경로]에 현재 크롬 브라우저 버전과 맞는
    chromedriver.exe 경로 넣기
-2. 네이버 아이디, 암호 입력 후 로그인 클릭
-     </string>
+2. 인코딩한 아이디, 암호 입력 후 로그인 클릭</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_2">
@@ -161,7 +160,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>335</width>
+     <width>331</width>
      <height>21</height>
     </rect>
    </property>
