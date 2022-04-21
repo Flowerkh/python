@@ -67,7 +67,6 @@ class WindowClass(QMainWindow, form_class) :
         else:
             self.plainTextEdit.appendPlainText("LOG: Main Process in done.")
         finally:
-            os.system("Pause")
             driver.quit()
 
     def check_order(self, driver, macro_count):  # 재고 확인 및 구매
