@@ -12,8 +12,6 @@ from selenium.webdriver.common.by import By
 os.system('chcp 65001')
 
 form_class = uic.loadUiType("poketmon.ui")[0]
-
-c_path = "C:/Users/GECL/PycharmProjects/pythonProject/naver_poketmon/chromedriver.exe";
 target_url = "https://brand.naver.com/samlip/products/6510954368";
 
 class WindowClass(QMainWindow, form_class) :
@@ -22,7 +20,6 @@ class WindowClass(QMainWindow, form_class) :
         self.setupUi(self)
         self.GUI_main()
 
-        #button event
         self.pushButton.clicked.connect(self.buttonclick)
 
     def buttonclick(self):
@@ -61,8 +58,10 @@ class WindowClass(QMainWindow, form_class) :
                 macro_count += 1
                 time.sleep(int(1))
                 if (macro_count > int(self.re_cnt.value()) and int(self.re_cnt.value()) != -1):
+                    QApplication.processEvents()
                     self.plainTextEdit.appendPlainText("LOG: 매크로 작동 가능 횟수를 넘어 프로그램이 종료됩니다.")
-                    break
+                    driver.quit()
+
         except Exception as e:
             self.plainTextEdit.appendPlainText('LOG: Error [%s]' % (str(e)))
         else:
@@ -92,6 +91,7 @@ class WindowClass(QMainWindow, form_class) :
 
     # 크롬 버전 관리
     def get_driver(self):
+        c_path = self.browser_path.text()
         chrome_options = webdriver.ChromeOptions()
         driver = webdriver.Chrome(c_path, options=chrome_options)
         return driver
@@ -115,4 +115,4 @@ if __name__ == "__main__" :
     myWindow = WindowClass()
     myWindow.show()
 
-    sys.exit(app.exec_())
+    app.exec_()
