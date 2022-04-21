@@ -60,7 +60,7 @@ class WindowClass(QMainWindow, form_class) :
                 if (macro_count > int(self.re_cnt.value()) and int(self.re_cnt.value()) != -1):
                     QApplication.processEvents()
                     self.plainTextEdit.appendPlainText("LOG: 매크로 작동 가능 횟수를 넘어 프로그램이 종료됩니다.")
-                    driver.quit()
+                    break
 
         except Exception as e:
             self.plainTextEdit.appendPlainText('LOG: Error [%s]' % (str(e)))
@@ -115,4 +115,4 @@ if __name__ == "__main__" :
     myWindow = WindowClass()
     myWindow.show()
 
-    app.exec_()
+    sys.exit(app.exec_())
