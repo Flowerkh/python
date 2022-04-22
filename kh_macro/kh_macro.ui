@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>470</width>
-    <height>420</height>
+    <width>295</width>
+    <height>312</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QPushButton" name="jandi">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -27,7 +27,7 @@
      <string>JANDI 실행</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_2">
+   <widget class="QPushButton" name="sql">
     <property name="geometry">
      <rect>
       <x>100</x>
@@ -46,7 +46,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>470</width>
+     <width>295</width>
      <height>21</height>
     </rect>
    </property>

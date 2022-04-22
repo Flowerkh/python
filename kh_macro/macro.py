@@ -17,6 +17,7 @@ class khMacro(QMainWindow):
 
     # 잔디
     def jandi(self):
+        QApplication.processEvents()
         btn = QPushButton('jandi 실행', self)
         btn.move(5, 5)
         btn.clicked.connect(lambda:self.buttonclick('jandi'))
@@ -24,6 +25,7 @@ class khMacro(QMainWindow):
 
     # sql
     def Sql(self):
+        QApplication.processEvents()
         btn = QPushButton('sqlyog 실행', self)
         btn.move(110,5)
         btn.clicked.connect(lambda:self.buttonclick('sqlyog'))
@@ -73,6 +75,7 @@ class khMacro(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     main = khMacro()
+    
     app.exec_()
 
 # while True:
