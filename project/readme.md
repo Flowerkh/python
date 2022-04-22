@@ -3,9 +3,7 @@
 ### 사전 작업
 1. https://securities.koreainvestment.com/main/Main.jsp > 서비스 신청 > Open API > KIS Developers > KIS Developers 서비스 신청하기 
 2. KIS_key.json 파일 생성
-
 ```json
-// KIS_key.json
 {
   "id": "발급받은 ID",
   "account" : "사용할 계좌",
