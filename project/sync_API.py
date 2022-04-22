@@ -20,8 +20,10 @@ class Sync_API:
     APP_SECRET = config['app_secret']
     URL_BASE = "https://openapi.koreainvestment.com:9443"
     PATH = "/oauth2/tokenP"
-    out_pr_PATH = "/uapi/overseas-price/v1/quotations/price"
-    in_pr_PATH = "uapi/domestic-stock/v1/quotations/inquire-price"
+    #해외
+    foreign_pr_PATH = "/uapi/overseas-price/v1/quotations/price"
+    #국내
+    local_pr_PATH = "uapi/domestic-stock/v1/quotations/inquire-price"
     headers = {"content-type": "application/json"}
     body = {"grant_type": "client_credentials",
             "appkey": APP_KEY,
@@ -47,3 +49,5 @@ class hash_KEY:
         "ORD_SVR_DVSN_CD": "0"
     }
     PATH = "uapi/hashkey"
+
+
