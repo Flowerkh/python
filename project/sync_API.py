@@ -1,3 +1,8 @@
+'''
+@조회 : foreign_pr_PATH
+@구매 : foreign_pay_PATH
+@잔고 : foreign_info_PATH
+'''
 import json
 
 def get_config():
@@ -19,16 +24,14 @@ class Sync_API:
     APP_KEY = config['app_key']
     APP_SECRET = config['app_secret']
     ACCOUNT = config['account']
+    SUB_ACCOUNT = config['sub_account']
     URL_BASE = "https://openapi.koreainvestment.com:9443"
     PATH = "/oauth2/tokenP"
-    ##해외##
-    #조회
-    foreign_pr_PATH = "/uapi/overseas-price/v1/quotations/price"
-    #구매
-    foreign_pay_PATH = "/uapi/overseas-stock/v1/trading/order"
 
-    ##국내##
-    local_pr_PATH = "uapi/domestic-stock/v1/quotations/inquire-price"
+    foreign_pr_PATH = "/uapi/overseas-price/v1/quotations/price"
+    foreign_pay_PATH = "/uapi/overseas-stock/v1/trading/order"
+    foreign_info_PATH = "/uapi/overseas-stock/v1/trading/inquire-balance"
+
     headers = {"content-type": "application/json"}
     body = {"grant_type": "client_credentials",
             "appkey": APP_KEY,
@@ -45,5 +48,3 @@ class hash_KEY:
                'appKey': APP_KEY,
                'appSecret': APP_SECRET
                }
-
-
