@@ -1,6 +1,4 @@
 from stock import *
-from sync_API import *
-import requests
 
 class for_trade:
     # 종목 조회

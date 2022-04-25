@@ -1,6 +1,4 @@
 from stock import *
-from sync_API import *
-import requests
 
 class loc_trade:
     def loc_search(ACCESS_TOKEN, KIND, CODE):
