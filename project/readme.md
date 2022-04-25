@@ -28,3 +28,20 @@
     * OVRS_EXCG_CD
       * 해외
         > NASD : 나스닥, NYSE : 뉴욕, AMEX : 아멕스, SEHK : 홍콩, SHAA : 중국상해, SZAA : 중국심천, TKSE : 일본
+---
+* def info @request_param
+> ovrs_pdno : 해외상품번호\
+ovrs_item_name : 해외종목명\
+frcr_evlu_pfls_amt : 외화평가손익금액\
+evlu_pfls_rt : 평가손익율\
+pchs_avg_pric : 매입평균가격\
+ovrs_cblc_qty : 해외잔고수량\
+ord_psbl_qty : 주문가능수량(매도 가능한 주문 수량)\
+frcr_pchs_amt1 : 외화매입금액1(해당 종목의 외화 기준 매입금액)\
+ovrs_stck_evlu_amt : 해외주식평가금액(해당 종목의 외화 기준 평가금액)\
+now_pric2 : 현재가격2(해당 종목의 현재가)\
+tr_crcy_cd : USD : 미국달러 , HKD : 홍콩달러 , CNY : 중국위안화 , JPY : 일본엔화 , VND : 베트남동\
+ovrs_excg_cd : NASD : 나스닥 , NYSE : 뉴욕 , AMEX : 아멕스 , SEHK : 홍콩 , SHAA : 중국상해 , SZAA : 중국심천 , TKSE : 일본 , HASE : 하노이거래소 , VNSE : 호치민거래소\
+LOAN_TYPE_CD : 대출유형코드\
+loan_dt : 대출일자\
+expd_dt : 만기일자
