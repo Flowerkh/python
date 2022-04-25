@@ -14,13 +14,13 @@ def main():
             if arr['ovrs_excg_cd']=='NYSE': excd='NYS'
             s_price = float(arr['pchs_avg_pric'])-10
             h_price = float(arr['pchs_avg_pric'])+3
-
+            avr_price = round((float(arr['now_pric2'])-float(arr['pchs_avg_pric'])),2)
             if(s_price<=float(arr['now_pric2'])<=h_price):
-                trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
-                print(trade_val['msg1'])
-                #print(f"{arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 평균가 : {arr['pchs_avg_pric']}, 현재가 : {arr['now_pric2']}, 차액(현재가-평균가) : {round((float(arr['now_pric2'])-float(arr['pchs_avg_pric'])),2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}")
-
-            print(arr)
+                pass
+                #trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
+                #print(trade_val['msg1'])
+            print(search(ACCESS_TOKEN,excd,arr['ovrs_pdno']))
+            print(f"{arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 평균가 : {arr['pchs_avg_pric']}, 현재가 : {arr['now_pric2']}, 차액(현재가-평균가) : {round((float(arr['now_pric2'])-float(arr['pchs_avg_pric'])),2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}")
 
     except Exception as e:
         print(e)

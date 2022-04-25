@@ -18,7 +18,7 @@ def get_config():
 config = get_config()
 
 class Sync_API:
-    def __init__(self, config):
+    def __init__(self):
         self.config = config
 
     APP_KEY = config['app_key']
@@ -38,7 +38,7 @@ class Sync_API:
             "appsecret": APP_SECRET}
 
 class hash_KEY:
-    def __init__(self, config):
+    def __init__(self):
         self.config = config
 
     APP_KEY = config['app_key']
