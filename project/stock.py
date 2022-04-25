@@ -12,9 +12,12 @@ def main():
             time.sleep(1)
             if arr['ovrs_excg_cd']=='NASD': excd='NAS'
             if arr['ovrs_excg_cd']=='NYSE': excd='NYS'
-
-            print(f"{arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 평균가 : {arr['pchs_avg_pric']}, 현재가 : {arr['now_pric2']}, 차액(현재가-평균가) : {round((float(arr['now_pric2'])-float(arr['pchs_avg_pric'])),2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}")
-            print(trade(ACCESS_TOKEN,excd,arr['ovrs_pdno']))
+            s_price = float(arr['pchs_avg_pric'])-10
+            h_price = float(arr['pchs_avg_pric'])+3
+            if(s_price<=float(arr['now_pric2'])<=h_price):
+                trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
+                print(f"{arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 평균가 : {arr['pchs_avg_pric']}, 현재가 : {arr['now_pric2']}, 차액(현재가-평균가) : {round((float(arr['now_pric2'])-float(arr['pchs_avg_pric'])),2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}")
+                print(trade_val['msg1'])
 
     except Exception as e:
         print(e)
@@ -34,9 +37,13 @@ def hashkey(datas):
 
     return hashkey
 
-def trade(token,kind,code):
-    foreign_val = for_trade.foreign_search(token, kind, code)
-    return foreign_val['output']
+def search(token,kind,code):
+    val = for_trade.foreign_search(token, kind, code)
+    return val['output']
+
+def trade(token,kind,code,price):
+    val = for_trade.foreign_trade(token,kind,code,price)
+    return val
 
 def info(token,kind):
     return for_trade.my_info(token, kind)
