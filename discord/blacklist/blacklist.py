@@ -52,7 +52,7 @@ class chatbot(discord.Client):
                     result = Counter(c_list + list(set(black_list)))
                     for key, value in dict(result.most_common(1)).items():
                         if value >= 2:
-                            await message.channel.send(f'{char_name}({key}) <- 블랙리스트 당장 추방 요망!!!!!:rage::rage::rage:')
+                            await message.channel.send(f'{char_name}({key}) <- 블랙리스트 당장 추방 요망!!!전과 {Counter(black_list)[key]}범:rage::rage::rage:')
                         else:
                             await message.channel.send('블랙리스트에 포함되지 않은 유저입니다 ^^*')
 
