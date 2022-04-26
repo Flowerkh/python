@@ -1,52 +1,27 @@
-from PyQt5.QtWidgets import QApplication,QLineEdit,QWidget,QFormLayout
-from PyQt5.QtGui import QIntValidator,QDoubleValidator,QFont
-from PyQt5.QtCore import Qt
-import sys
+import requests
+import re
+from bs4 import BeautifulSoup
+from collections import Counter
 
-class lineEditDemo(QWidget):
-        def __init__(self,parent=None):
-                super().__init__(parent)
-                e1 = QLineEdit()
-                e1.setValidator(QIntValidator())
-                e1.setMaxLength(4)
-                e1.setAlignment(Qt.AlignRight)
-                e1.setFont(QFont("Arial",20))
+url = 'https://lostark.game.onstove.com/Profile/Character/알나'
+response = requests.get(url)
+black_list = ['테란','여x나','류서윤','푸에람','이세계겜블러','모네창','백도사','agent','아즈웬','콜라겐스킨','준뉭','석키배마','안드레아Y','빙구구루','찍먹형캐릭터','청샨','Aglovale','리플진','첨단','황하윤여자친구','하나사랑g','탕꾸리','천안혀니','커몽시','갓막창','칠격','주먹왕두두','모노뽈리','재미를찾아']
+if response.status_code == 200:
+        try:
+                html = response.text
+                soup = BeautifulSoup(html, 'html.parser')
+                char_list = soup.select('#expand-character-list > ul > li > span > button > span')
+                c_list = []
+                for list in char_list:
+                        c_list.append(re.sub('<.+?>', '', str(list)))
+                result = Counter(c_list+black_list)
+                print(dict(result.most_common(1)))
+                for key, value in dict(result.most_common(1)).items():
+                        if value >= 2:
+                                print(f'{key} <- 블추된 새끼임. 당장 추방 요망')
+                                break
+                        else:
+                                print()
 
-                e2 = QLineEdit()
-                e2.setValidator(QDoubleValidator(0.99,99.99,2))
-
-                e3 = QLineEdit()
-                e3.setInputMask("+99_9999_999999")
-
-                e4 = QLineEdit()
-                e4.textChanged.connect(self.textchanged)
-
-                e5 = QLineEdit()
-                e5.setEchoMode(QLineEdit.Password)
-
-                e6 = QLineEdit("Hello PyQt5")
-                e6.setReadOnly(True)
-                e5.editingFinished.connect(self.enterPress)
-
-                flo = QFormLayout()
-                flo.addRow("integer validator",e1)
-                flo.addRow("Double validator",e2)
-                flo.addRow("Input Mask",e3)
-                flo.addRow("Text changed",e4)
-                flo.addRow("Password",e5)
-                flo.addRow("Read Only",e6)
-
-                self.setLayout(flo)
-                self.setWindowTitle("QLineEdit Example")
-
-        def textchanged(self,text):
-                print("Changed: " + text)
-
-        def enterPress(self):
-                print("Enter pressed")
-
-if __name__ == "__main__":
-        app = QApplication(sys.argv)
-        win = lineEditDemo()
-        win.show()
-        sys.exit(app.exec_())
+        except Exception as e:
+                print(e)
