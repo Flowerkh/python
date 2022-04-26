@@ -28,17 +28,18 @@ class chatbot(discord.Client):
         print('b_ready')
 
     async def on_message(self, message):
-        path = "./black_list.txt"
-        t = open(path, "r", encoding="utf-8")
-        lines = t.readlines()
-        black_list = []
 
-        for line in lines:
-            black_list.append(line.strip('\n'))
+        path = "./black_list.txt"
         if message.content.startswith("/찾기 "):
             char_name = message.content.replace("/찾기 ", "")
             url = 'https://lostark.game.onstove.com/Profile/Character/' + char_name
             response = requests.get(url)
+            black_list = []
+            t = open(path, "r", encoding="utf-8")
+            lines = t.readlines()
+
+            for line in lines:
+                black_list.append(line.strip('\n'))
 
             if response.status_code == 200:
                 try:
@@ -58,6 +59,13 @@ class chatbot(discord.Client):
                 except Exception as e:
                     print(e)
 
+        if message.content.startswith("/추가 "):
+            char_name = message.content.replace("/추가 ", "")
+            f = open(path + f"blacklist.txt", 'a', encoding='utf-8')
+            if (message.author.id == 330308658497978370):
+                f.write(f"\n{char_name}")
+            else:
+                await message.channel.send('권한이 없습니다')
 
 
 #봇 실행 함수
