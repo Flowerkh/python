@@ -1,3 +1,4 @@
+#제외 대상
 discord/**/*.txt
 discord/**/*.log
 discord/**/*.json
@@ -5,3 +6,6 @@ mail_test/*.txt
 naver_poketmon/config.json
 project/*.txt
 project/*.json
+
+#포함
+!discord/blacklist/black_list.txt

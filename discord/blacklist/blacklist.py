@@ -2,7 +2,7 @@ import discord
 import json
 import requests
 import re
-import asyncio
+import os
 from bs4 import BeautifulSoup
 from collections import Counter
 
@@ -28,15 +28,18 @@ class chatbot(discord.Client):
         print('b_ready')
 
     async def on_message(self, message):
-        black_list = ['테란', '여x나', '류서윤', '푸에람', '이세계겜블러', '모네창', '백도사', 'agent', '아즈웬', '콜라겐스킨', '준뉭', '석키배마', '안드레아Y',
-                      '빙구구루', '찍먹형캐릭터', '청샨', 'Aglovale', '리플진', '첨단', '황하윤여자친구', '하나사랑g', '탕꾸리', '천안혀니', '커몽시', '갓막창',
-                      '칠격', '주먹왕두두', '모노뽈리', '재미를찾아'
-                      ]
+        path = "./black_list.txt"
+        t = open(path, "r", encoding="utf-8")
+        lines = t.readlines()
+        black_list = []
+
+        for line in lines:
+            black_list.append(line.strip('\n'))
         if message.content.startswith("/찾기 "):
             char_name = message.content.replace("/찾기 ", "")
             url = 'https://lostark.game.onstove.com/Profile/Character/' + char_name
             response = requests.get(url)
-            i = 0
+
             if response.status_code == 200:
                 try:
                     html = response.text
