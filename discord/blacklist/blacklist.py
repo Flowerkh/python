@@ -61,9 +61,12 @@ class chatbot(discord.Client):
 
         if message.content.startswith("/추가 "):
             char_name = message.content.replace("/추가 ", "")
-            f = open(path + f"blacklist.txt", 'a', encoding='utf-8')
-            if (message.author.id == 330308658497978370):
+            auth = [330308658497978370,348834554011975680]
+            f = open(path, 'a', encoding='utf-8')
+
+            if message.author.id in auth:
                 f.write(f"\n{char_name}")
+                await message.channel.send('블랙리스트 추가완료하였습니다.')
             else:
                 await message.channel.send('권한이 없습니다')
 
