@@ -1,5 +1,6 @@
 discord/**/*.txt
 discord/**/*.log
+discord/**/*.json
 mail_test/*.txt
 naver_poketmon/config.json
 project/*.txt
