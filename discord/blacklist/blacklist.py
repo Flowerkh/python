@@ -47,9 +47,9 @@ class chatbot(discord.Client):
                     soup = BeautifulSoup(html, 'html.parser')
                     char_list = soup.select('#expand-character-list > ul > li > span > button > span')
                     c_list = []
-                    for list in char_list:
-                        c_list.append(re.sub('<.+?>', '', str(list)))
-                    result = Counter(c_list + black_list)
+                    for val in char_list:
+                        c_list.append(re.sub('<.+?>', '', str(val)))
+                    result = Counter(c_list + list(set(black_list)))
                     for key, value in dict(result.most_common(1)).items():
                         if value >= 2:
                             await message.channel.send(f'{char_name}({key}) <- 블랙리스트 당장 추방 요망!!!!!:rage::rage::rage:')
@@ -61,7 +61,7 @@ class chatbot(discord.Client):
 
         if message.content.startswith("/추가 "):
             char_name = message.content.replace("/추가 ", "")
-            auth = [330308658497978370,348834554011975680]
+            auth = [330308658497978370,348834554011975680,747097885446897714]
             f = open(path, 'a', encoding='utf-8')
 
             if message.author.id in auth:
@@ -69,7 +69,6 @@ class chatbot(discord.Client):
                 await message.channel.send('블랙리스트 추가완료하였습니다.')
             else:
                 await message.channel.send('권한이 없습니다')
-
 
 #봇 실행 함수
 if __name__ == "__main__":

@@ -6,6 +6,6 @@ mail_test/*.txt
 naver_poketmon/config.json
 project/*.txt
 project/*.json
-
+/test.txt
 #포함
 !discord/blacklist/black_list.txt
