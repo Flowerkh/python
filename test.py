@@ -26,8 +26,7 @@ if response.status_code == 200:
 
                 for key, value in dict(result.most_common(1)).items():
                         if value >= 2:
-                                print(f'{key} <- 블추된 새끼임. 당장 추방 요망 전과 {Counter(black_file)[key]}범 임')
-                                break
+                                print(f'({key}) <- 블랙리스트 당장 추방 요망!!!전과 {Counter(black_file)[key]}범:rage::rage::rage:')
                         else:
                                 print(1)
 
