@@ -2,13 +2,12 @@ import discord
 import json
 import requests
 import re
-import os
 from bs4 import BeautifulSoup
 from collections import Counter
 
 def get_config():
 	try:
-		with open('token.json') as json_file:
+		with open('/home/discord/token.json') as json_file:
 			json_data = json.load(json_file)
 	except Exception as e:
 		print('LOG: Error in reading config file, {}'.format(e))
@@ -29,7 +28,7 @@ class chatbot(discord.Client):
 
     async def on_message(self, message):
 
-        path = "./black_list.txt"
+        path = "/home/discord/black_list.txt"
         if message.content.startswith("/찾기 "):
             char_name = message.content.replace("/찾기 ", "")
             url = 'https://lostark.game.onstove.com/Profile/Character/' + char_name
