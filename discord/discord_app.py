@@ -2,12 +2,13 @@ import discord
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import date, datetime
+from datetime import datetime
 import asyncio
 import os
 
 time = datetime.now()
-token_path = os.path.dirname(os.path.abspath(__file__))+"/token.txt"
+#token_path = os.path.dirname(os.path.abspath(__file__))+"/token.txt"
+token_path = "/home/discord/kh_app/token.txt"
 t = open(token_path, "r", encoding="utf-8")
 lines = t.readlines()
 for line in lines:
@@ -27,7 +28,7 @@ class chatbot(discord.Client):
     async def on_message(self, message):
         del_message = ['시발','씨발','좃','좆','족','새기','새끼','썅','병신','뱅신','애미','니미']
         del_message_auth = ['9889']
-        path = "./log/"
+        path = "/home/discord/kh_app/log/"
         if not os.path.isdir(path): os.mkdir(path)
         f = open(path + f"chat_log_{time.strftime('%Y%m%d')}.log", 'a', encoding='utf-8')
 
