@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-char_name = '웅크린양'
+char_name = '알나'
 url = 'https://lostark.game.onstove.com/Profile/Character/'+char_name
 response = requests.get(url)
 
@@ -29,7 +29,16 @@ if response.status_code == 200:
     char_card_set1 = soup.select('#cardSetList > li > div.card-effect__title')
     char_card_set2 = soup.select('#cardSetList > li > div.card-effect__dsc')
     char_ability = soup.select('#profile-ability > div.profile-ability-engrave > div.swiper-container > div.swiper-wrapper > ul.swiper-slide > li > span')
+    char_list = soup.select('#expand-character-list > ul > li > span > button > span')
+    char_list_arr = []
 
+    #print(soup.select('#expand-character-list'))
+
+    for data in char_list:
+        data = re.sub('<.+?>', '',str(data))
+        char_list_arr.append(data)
+
+    print(char_list_arr)
     for li in lis:
         li = re.sub('<.+?>', '',str(li))
         char_stat.append(li)
@@ -40,38 +49,22 @@ if response.status_code == 200:
             char_jem.append(re.sub('<.+?>', '', str(jewel)))
             jem_lev_list.append(re.sub('<.+?>', '', str(jewel))[-9:])
         cnt = 0
-        print(char_jem)
-        print(jem_lev_list)
+
         for lev in jem_lev_list:
             if (lev.find('감소') > 0):
                 user_jem_lev.append(f"홍염 {jem_lev[lev]} : {char_jem[cnt]}")
             else:
                 user_jem_lev.append(f"멸화 {jem_lev[lev]} : {char_jem[cnt]}")
             cnt += 1
+
     except Exception as e:
         pass
 
-    if(len(char_jem) > 0):
-        pass
     else:
         user_jem_lev = '보석이 없습니다.'
 
     for i in range(0,len(char_card_set1)):
         card_option.append(f"{re.sub('<.+?>', '', str(char_card_set1[i]))} : {re.sub('<.+?>', '', str(char_card_set2[i]))}")
-
-    #각인
-    for ability in char_ability:
-        pass
-        #print(re.sub('<.+?>', '', str(ability)))
-    char_skill = {
-        "버서커":"순간 받는 피해 12% 증가", "데모닉":"순간 받는 피해 12% 증가", "워로드":"순간 받는 피해 3% 증가\n상시 몬스터 방어력 감소 12%\n순간 백&헤드 데미지 9% 증가\n정화(상태이상 해제/넬라시아의 기운)", "인파이터":"상시 받는 피해 6% 증가", "호크아이":"상시 받는 피해 6% 증가", "소서리스":"상시 받는 피해 6% 증가", "블레이드":"상시 받는 피해 3%증가\n상시 백&헤드 데미지 9% 증가",
-        "창술사":"순간 치명타 적중률 18%", "배틀마스터":"순간 치명타 적중률 18%", "스트라이커":"순간 치명타 적중률 18%", "데빌헌터":"상시 치명타 적중률 10%", "건슬링어":"상시 치명타 적중률 10%", "아르카나":"상시 치명타 적중률 10%",
-        "기공사":"상시 공격력 6%증가\n정화(상태이상 해제/내공 방출)", "스카우터":"상시 공격력 6%증가",
-        "디스트로이어":"순간 몬스터 방어력 감소 24%", "서머너":"순간 몬스터 방어력 감소 24%\n정화(상태이상 해제/레이네의 가호)","블래스터":"상시 몬스터 방어력 감소 12%",
-        "리퍼":"상시 치명타 피해 20% 증가",
-        "홀리나이트":"정화(상태이상 해제/신성한 보호)"
-    }
-    char_job = soup.select_one('#lostark-wrapper > div > main > div > div.profile-character-info > img').get('alt')
 
 else:
     print(response.status_code)
