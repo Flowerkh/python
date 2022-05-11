@@ -46,14 +46,18 @@ class chatbot(discord.Client):
                     soup = BeautifulSoup(html, 'html.parser')
                     char_list = soup.select('#expand-character-list > ul > li > span > button > span')
                     c_list = []
+                    result = []
                     for val in char_list:
                         c_list.append(re.sub('<.+?>', '', str(val)))
-                    result = Counter(c_list + list(set(black_list)))
-                    for key, value in dict(result.most_common(1)).items():
-                        if value >= 2:
-                            await message.channel.send(f'{char_name}({key}) <- 블랙리스트 당장 추방 요망!!!전과 {Counter(black_list)[key]}범:rage::rage::rage:')
-                        else:
-                            await message.channel.send('블랙리스트에 포함되지 않은 유저입니다 ^^*')
+                    for s1 in c_list:
+                        for s2 in black_list:
+                            if s1 == s2:
+                                result.append(s1);
+
+                    if len(result) > 0:
+                        await message.channel.send(f'{char_name} <- 블랙리스트 당장 추방 요망!!!전과 {len(result)}범:rage::rage::rage:')
+                    else:
+                        await message.channel.send('블랙리스트에 포함되지 않은 유저입니다 ^^*')
 
                 except Exception as e:
                     print(e)
