@@ -3,7 +3,6 @@ import json
 import requests
 import re
 from bs4 import BeautifulSoup
-from collections import Counter
 
 def get_config():
 	try:
@@ -55,7 +54,8 @@ class chatbot(discord.Client):
                                 result.append(s1);
 
                     if len(result) > 0:
-                        await message.channel.send(f'{char_name} <- 블랙리스트 당장 추방 요망!!!전과 {len(result)}범:rage::rage::rage:')
+                        await message.channel.send(
+                            f'{char_name} <- 블랙리스트 당장 추방 요망!!!전과 {len(result)}범:rage::rage::rage:')
                     else:
                         await message.channel.send('블랙리스트에 포함되지 않은 유저입니다 ^^*')
 
@@ -64,7 +64,17 @@ class chatbot(discord.Client):
 
         if message.content.startswith("/추가 "):
             char_name = message.content.replace("/추가 ", "")
-            auth = [330308658497978370,348834554011975680,747097885446897714]
+            auth = [330308658497978370,348834554011975680,747097885446897714,482681007489810442]
+            f = open(path, 'a', encoding='utf-8')
+
+            if message.author.id in auth:
+                f.write(f"\n{char_name}")
+                await message.channel.send('블랙리스트 추가완료하였습니다.')
+            else:
+                await message.channel.send('권한이 없습니다')
+        if message.content.startswith("/제거 "):
+            char_name = message.content.replace("/제거 ", "")
+            auth = [330308658497978370]
             f = open(path, 'a', encoding='utf-8')
 
             if message.author.id in auth:
