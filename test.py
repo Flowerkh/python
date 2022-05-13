@@ -1,34 +1,26 @@
-import requests
-import re
-import os
-from bs4 import BeautifulSoup
-from collections import Counter
+import json
 
-url = 'https://lostark.game.onstove.com/Profile/Character/포용력좋은사람'
-response = requests.get(url)
-path = os.path.dirname(os.path.abspath(__file__))+"/test.txt"
-t = open(path, "r", encoding="utf-8")
-lines = t.readlines()
-black_file = []
-for line in lines:
-    black_file.append(line.strip('\n'))
+def get_config():
+	try:
+		with open('/home/discord/token.json') as json_file:
+			json_data = json.load(json_file)
+	except Exception as e:
+		print('LOG: Error in reading config file, {}'.format(e))
+		return None
+	else:
+		return json_data
+
+path = "./discord/blacklist/black_list.txt"
+black_list = []
+
+with open(path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        for line in lines:
+                if line.strip("\n") != "안드레아Y":
+                        black_list.append(line.strip('\n'))
+with open(path, 'w', encoding="utf-8") as f:
+	for val in black_list:
+		f.write(f"{val}\n")
 
 
-if response.status_code == 200:
-        try:
-                html = response.text
-                soup = BeautifulSoup(html, 'html.parser')
-                char_list = soup.select('#expand-character-list > ul > li > span > button > span')
-                c_list = []
-                for clist in char_list:
-                        c_list.append(re.sub('<.+?>', '', str(clist)))
-                result = Counter(c_list+list(set(black_file)))
-
-                for key, value in dict(result.most_common(1)).items():
-                        if value >= 2:
-                                print(f'({key}) <- 블랙리스트 당장 추방 요망!!!전과 {Counter(black_file)[key]}범:rage::rage::rage:')
-                        else:
-                                print(1)
-
-        except Exception as e:
-                print(e)
+print(black_list)

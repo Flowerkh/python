@@ -72,14 +72,21 @@ class chatbot(discord.Client):
                 await message.channel.send('블랙리스트 추가완료하였습니다.')
             else:
                 await message.channel.send('권한이 없습니다')
+                
         if message.content.startswith("/제거 "):
             char_name = message.content.replace("/제거 ", "")
             auth = [330308658497978370]
-            f = open(path, 'a', encoding='utf-8')
-
+            black_list = []
             if message.author.id in auth:
-                f.write(f"\n{char_name}")
-                await message.channel.send('블랙리스트 추가완료하였습니다.')
+                with open(path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    for line in lines:
+                        if line.strip("\n") != char_name:
+                            black_list.append(line.strip('\n'))
+                with open(path, 'w', encoding="utf-8") as f:
+                    for val in black_list:
+                        f.write(f"{val}\n")
+                await message.channel.send('블랙리스트 제거완료하였습니다.')
             else:
                 await message.channel.send('권한이 없습니다')
 
