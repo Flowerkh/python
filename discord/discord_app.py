@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 import asyncio
 import os
+import json
 
 time = datetime.now()
 #token_path = os.path.dirname(os.path.abspath(__file__))+"/token.txt"
@@ -76,8 +77,16 @@ class chatbot(discord.Client):
             url = 'https://lostark.game.onstove.com/Profile/Character/' + char_name
             response = requests.get(url)
 
+            #무기
+            weapon_st = 'http://152.70.248.4:5000/userinfo/' + char_name
+            weapon_list = requests.get(weapon_st)
+
             if response.status_code == 200:
                 try:
+                    json_data = json.loads(weapon_list.text)
+                    quality = json.dumps(json_data['Items']['무기']['Quality'], indent="\t", ensure_ascii=False)
+                    weapon = json.dumps(json_data['Items']['무기']['Name'], indent="\t", ensure_ascii=False)
+
                     html = response.text
                     soup = BeautifulSoup(html, 'html.parser')
                     char_stat = []
