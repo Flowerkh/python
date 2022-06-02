@@ -2,9 +2,11 @@ from foreign_trade import *
 from sync_API import *
 import requests
 import json
+from datetime import datetime
+
+time = datetime.now()
 
 def main():
-    path = "./token.txt"
     url = "https://quotation-api-cdn.dunamu.com/v1/forex/recent?codes=FRX.KRWUSD"
     usd = requests.get(url)
     if usd.status_code == 200:
@@ -13,7 +15,9 @@ def main():
     else:
         print(usd.status_code)
     try:
-        f = open(path, 'r', encoding='utf-8')
+        f = open("./token.txt", 'r', encoding='utf-8')
+        w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+
         line = f.readline()
         ACCESS_TOKEN = line
 
@@ -23,16 +27,15 @@ def main():
             price = float(arr['now_pric2']) #현재가
             kor = price*dollor;
             if(arr['ovrs_pdno']=='AAPL'):
-                if(140<price<=150):
+                if(140<price<=155):
                     if(kor<=200000):
-                        print(dollor)
-                        print(f"{arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 평균가 : {arr['pchs_avg_pric']}, 현재가 : {arr['now_pric2']}, 차액(현재가-평균가) : {round((float(arr['now_pric2']) - float(arr['pchs_avg_pric'])), 2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}, KOR : {round(kor, 2)}")
-                        # trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
-                        # print(trade_val['msg1'])
+                        w.write(f"({time.strftime('%Y-%m-%d %H:%M:%S')}) {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 평균가 : {arr['pchs_avg_pric']}, 현재가 : {arr['now_pric2']}, 차액(현재가-평균가) : {round((float(arr['now_pric2']) - float(arr['pchs_avg_pric'])), 2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}, KOR : {round(kor, 2)}, USD : {dollor}\n")
+                        trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
+                        w.write(f"{trade_val['msg1']}\n")
 
     except Exception as e:
         print(e)
-        f = open(path, 'w', encoding='utf-8')
+        f = open("./token.txt", 'w', encoding='utf-8')
         ACCESS_TOKEN = token()
         f.write(ACCESS_TOKEN)
 
