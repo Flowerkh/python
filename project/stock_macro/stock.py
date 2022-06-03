@@ -15,10 +15,10 @@ def main():
     else:
         print(usd.status_code)
     try:
-        f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
-        w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
-        # f = open("./token.txt", 'r', encoding='utf-8')
-        # w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+        # f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
+        # w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
+        f = open("./token.txt", 'r', encoding='utf-8')
+        w = open("./log/cron_log.txt", 'a', encoding='utf-8')
 
         line = f.readline()
         ACCESS_TOKEN = line
@@ -32,7 +32,7 @@ def main():
             if(arr['ovrs_pdno']=='AAPL'):
                 if(140<price<=155):
                     if(kor<=188000):
-                        w.write(f"({time.strftime('%Y-%m-%d %H:%M:%S')}) {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 평균가 : {arr['pchs_avg_pric']}, 현재가 : {arr['now_pric2']}, 차액(현재가-평균가) : {round((float(arr['now_pric2']) - float(arr['pchs_avg_pric'])), 2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}, KOR : {round(kor, 2)}, USD : {dollor}\n")
+                        w.write(f"({time.strftime('%Y-%m-%d %H:%M:%S')}) {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 현재가 : {arr['now_pric2']}, 평균가 : {arr['pchs_avg_pric']}, 차액(현재가-평균가) : {round((float(arr['now_pric2']) - float(arr['pchs_avg_pric'])), 2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}, KOR : {round(kor, 2)}, USD : {dollor}\n")
                         trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
                         w.write(f"{trade_val['msg1']}\n")
 
