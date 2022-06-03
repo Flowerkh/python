@@ -7,6 +7,15 @@ from datetime import datetime
 time = datetime.now()
 
 def main():
+    # f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
+    # w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
+    f = open("./token.txt", 'r', encoding='utf-8')
+    w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+    with open("kakao_code.json", "r") as kakao:
+        kaka_tks = json.load(kakao)
+
+    kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
+    headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
     url = "https://quotation-api-cdn.dunamu.com/v1/forex/recent?codes=FRX.KRWUSD"
     usd = requests.get(url)
     if usd.status_code == 200:
@@ -15,26 +24,32 @@ def main():
     else:
         print(usd.status_code)
     try:
-        # f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
-        # w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
-        f = open("./token.txt", 'r', encoding='utf-8')
-        w = open("./log/cron_log.txt", 'a', encoding='utf-8')
-
         line = f.readline()
         ACCESS_TOKEN = line
 
         for arr in info(ACCESS_TOKEN,'NASD'):
-            if arr['ovrs_excg_cd']=='NASD': excd='NAS'
-            if arr['ovrs_excg_cd']=='NYSE': excd='NYS'
             price = float(arr['now_pric2']) #현재가
             kor = price*dollor
 
             if(arr['ovrs_pdno']=='AAPL'):
                 if(140<price<=155):
-                    if(kor<=188000):
+                    if(kor<=185000):
                         w.write(f"({time.strftime('%Y-%m-%d %H:%M:%S')}) {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 현재가 : {arr['now_pric2']}, 평균가 : {arr['pchs_avg_pric']}, 차액(현재가-평균가) : {round((float(arr['now_pric2']) - float(arr['pchs_avg_pric'])), 2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}, KOR : {round(kor, 2)}, USD : {dollor}\n")
                         trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
                         w.write(f"{trade_val['msg1']}\n")
+                        if(trade_val['msg1']=='주문 전송 완료 되었습니다.'):
+                            data = {
+                                'object_type': 'text',
+                                'text': f"({trade_val['msg1']}\n {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 현재가 : {arr['now_pric2']}, KOR : {round(kor, 2)}, USD : {dollor}",
+                                'link': {
+                                    'web_url': 'https://developers.kakao.com',
+                                    'mobile_web_url': 'https://developers.kakao.com'
+                                },
+                            }
+
+                            data = {'template_object': json.dumps(data)}
+                            response = requests.post(kakao_url, headers=headers, data=data)
+                            response.status_code
 
     except Exception as e:
         print(e)
