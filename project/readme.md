@@ -11,6 +11,7 @@
   "app_secret": "발급받은 APP_SECRET KEY"
 }
 ```
+3. token.txt 파일 생성
 ---
 * 변수 값
   * Request 
