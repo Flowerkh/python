@@ -11,13 +11,14 @@
   "app_secret": "발급받은 APP_SECRET KEY"
 }
 ```
+3. token.txt 파일 생성
 ---
 * 변수 값
   * Request 
     * KIND 
       * 해외 주식
         > HKS : 홍콩, NYS : 뉴욕, NAS : 나스닥, AMS : 아멕스, TSE : 도쿄, SHS : 상해, SZS : 심천, SHI : 상해지수, SZI : 심천지수, HSX : 호치민, HNX : 하노이
-      * 국내0
+      * 국내 
         > J : 주식, ETF, ETN
   * Response
     * tr_id
