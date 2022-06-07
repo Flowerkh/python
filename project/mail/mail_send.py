@@ -28,15 +28,15 @@ smtp.login(token[0].strip(),token[1])
 
 recipients = ["cdffee1@naver.com"]
 message = MIMEMultipart()
-message['Subject'] = f'{yesterday.strftime("%Y-%m-%d")} 로그 기록 전송'
+message['Subject'] = f'{yesterday.strftime("%Y-%m-%d")} 카카오 refresh_key 재발급'
 message['From'] = 'qbxlrudgk1@gmail.com'
 message['To'] = ",".join(recipients)
-content = f'{yesterday.strftime("%Y-%m-%d")}에 기록된 로그파일 입니다.'
+content = f'첨부파일 확인하여 refresh_key 재발급이 필요합니다.'
 minetext = MIMEText(content, 'html')
 message.attach(minetext)
 
 #첨부 파일
-attachments = [os.path.join(os.getcwd(), './login.txt')]
+attachments = [os.path.join(os.getcwd(), './kakao.zip')]
 for attachment in attachments:
     attach_binary = MIMEBase("application", "octet-stream")
     try:
