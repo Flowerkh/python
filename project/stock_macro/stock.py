@@ -7,10 +7,10 @@ from datetime import datetime
 time = datetime.now()
 
 def main():
-    # f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
-    # w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
-    f = open("./token.txt", 'r', encoding='utf-8')
-    w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+    f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
+    w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
+    #f = open("./token.txt", 'r', encoding='utf-8')
+    #w = open("./log/cron_log.txt", 'a', encoding='utf-8')
     with open("kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
 
@@ -37,23 +37,23 @@ def main():
                         w.write(f"({time.strftime('%Y-%m-%d %H:%M:%S')}) {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 현재가 : {arr['now_pric2']}, 평균가 : {arr['pchs_avg_pric']}, 차액(현재가-평균가) : {round((float(arr['now_pric2']) - float(arr['pchs_avg_pric'])), 2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}, KOR : {round(kor, 2)}, USD : {dollor}\n")
                         trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
                         w.write(f"{trade_val['msg1']}\n")
-                        if(trade_val['msg1']=='주문 전송 완료 되었습니다.'):
-                            data = {
-                                'object_type': 'text',
-                                'text': f"({trade_val['msg1']}\n {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 현재가 : {arr['now_pric2']}, KOR : {round(kor, 2)}, USD : {dollor}",
-                                'link': {
-                                    'web_url': 'https://developers.kakao.com',
-                                    'mobile_web_url': 'https://developers.kakao.com'
-                                },
-                            }
+                        data = {
+                            'object_type': 'text',
+                            'text': f"({trade_val['msg1']}\nUSD : {format(dollor,',')}\n{arr['ovrs_pdno']}({arr['ovrs_excg_cd']})\n현재가 : {arr['now_pric2']}\nKOR : {format(round(kor, 2),',')}",
+                            'link': {
+                                'web_url': 'https://developers.kakao.com',
+                                'mobile_web_url': 'https://developers.kakao.com'
+                            },
+                        }
 
-                            data = {'template_object': json.dumps(data)}
-                            response = requests.post(kakao_url, headers=headers, data=data)
-                            response.status_code
+                        data = {'template_object': json.dumps(data)}
+                        response = requests.post(kakao_url, headers=headers, data=data)
+                        response.status_code
 
     except Exception as e:
         print(e)
         f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
+        #f = open("./token.txt", 'w', encoding='utf-8')
         f.write(token())
 
 def token():
