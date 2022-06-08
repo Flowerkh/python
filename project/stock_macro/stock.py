@@ -7,10 +7,11 @@ from datetime import datetime
 time = datetime.now()
 
 def main():
-    f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
-    w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
-    #f = open("./token.txt", 'r', encoding='utf-8')
-    #w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+    #f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
+    #w = open("/home/project/stock/log/cron_log.txt", 'a', encoding='utf-8')
+    f = open("./token.txt", 'r', encoding='utf-8')
+    w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+    #with open("/home/project/stock/kakao_code.json", "r") as kakao:
     with open("kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
 
@@ -33,7 +34,7 @@ def main():
 
             if(arr['ovrs_pdno']=='AAPL'):
                 if(140<price<=155):
-                    if(kor<=185000):
+                    if(kor<=190000):
                         w.write(f"({time.strftime('%Y-%m-%d %H:%M:%S')}) {arr['ovrs_pdno']}({arr['ovrs_excg_cd']}), 현재가 : {arr['now_pric2']}, 평균가 : {arr['pchs_avg_pric']}, 차액(현재가-평균가) : {round((float(arr['now_pric2']) - float(arr['pchs_avg_pric'])), 2)}, 보유수량 : {int(arr['ovrs_cblc_qty'])}, KOR : {round(kor, 2)}, USD : {dollor}\n")
                         trade_val = trade(ACCESS_TOKEN, arr['ovrs_excg_cd'], arr['ovrs_pdno'], arr['now_pric2'])
                         w.write(f"{trade_val['msg1']}\n")
@@ -52,8 +53,8 @@ def main():
 
     except Exception as e:
         print(e)
-        f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
-        #f = open("./token.txt", 'w', encoding='utf-8')
+        #f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
+        f = open("./token.txt", 'w', encoding='utf-8')
         f.write(token())
 
 def token():
