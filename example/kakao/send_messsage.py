@@ -19,4 +19,5 @@ data = {
 
 data = {'template_object': json.dumps(data)}
 response = requests.post(kakao_url, headers=headers, data=data)
+print(response)
 response.status_code
