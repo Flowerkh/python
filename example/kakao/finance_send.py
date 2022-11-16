@@ -27,7 +27,7 @@ else:
 
 data = {
     'object_type': 'text',
-    'text': f"오늘의 환율\n1.0 USD : ￦ {usd_price}\n100.0 JPY : ￦ {jpy_price}\n1.0EUR : ￦ {eur_price}",
+    'text': f"오늘의 환율\n1.0 USD : ￦ {usd_price}\n100.0 JPY : ￦ {jpy_price}\n1.0 EUR : ￦ {eur_price}",
     'link': {
         'web_url': 'https://developers.kakao.com',
         'mobile_web_url': 'https://developers.kakao.com'
