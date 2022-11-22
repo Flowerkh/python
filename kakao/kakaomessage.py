@@ -18,5 +18,5 @@ response = requests.post(url, data=data)
 tokens = response.json()
 print(tokens)
 
-with open("kakao_code.json","w") as fp:
+with open("kakao_code.json", "w") as fp:
     json.dump(tokens, fp)
