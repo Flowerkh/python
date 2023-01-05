@@ -1,9 +1,12 @@
-#class
+import openpyxl as op
+from openpyxl.workbook.protection import WorkbookProtection
 
-class arr:
-    a = ["Seoul", "Kyeonggi", "Inchon", "Daejoen", "Deagu", "Pusan"]
-    str01 = ' '
-    for i in a:
-        str01 = str01 + i[0]
+wb = op.load_workbook("C:\\Users\\김경하\\Desktop\\이미지 변환\\invoice_xls.xlsx")
+ws = wb.active
+wb.security = WorkbookProtection(workBookPassword = '1234', lockStructure = True)
 
-print(arr.str01)
+#wb.security.workbookPassword = '1234'
+#wb.security.lockStructure = True
+
+# Save Excel file
+wb.save("C:\\Users\\김경하\\Desktop\\이미지 변환\\invoice_xls2.xlsx")

@@ -1,7 +1,14 @@
-a = 100
-result = 0
-for i in range(1,3):
-    result = a >> i
-    result = result +1
+import xlwings as xw
+from datetime import datetime
 
-print(result)
+today = datetime.today().strftime("%Y%m%d")
+name = "invites_export"
+file_name = f"{today}_{name}.xls"
+
+path = "C:\\Users\\김경하\\Desktop\\이미지 변환\\"
+#path = "\\data\\"
+
+app = xw.App(visible=False)
+wb = xw.Book(f"{path}{file_name}")
+wb.save(password=today, path=f"{path}{file_name}")
+app.kill()
