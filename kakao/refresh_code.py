@@ -1,5 +1,4 @@
 import json
-
 import requests
 
 url = "https://kauth.kakao.com/oauth/token"
