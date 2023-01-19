@@ -1,5 +1,4 @@
 import json
-
 import requests
 
 url = "https://kauth.kakao.com/oauth/token"
@@ -10,6 +9,7 @@ data = {
     "refresh_token": "d1REXYIaQSh9ZMY9v99AsbH96uGZs2CvbblK6nmOCilwngAAAYVR_90Y"
 }
 response = requests.post(url, data=data)
+
 print(response)
 
 # kakao_code.json 파일 저장

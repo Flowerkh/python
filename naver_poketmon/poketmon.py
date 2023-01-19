@@ -14,6 +14,9 @@ os.system('chcp 65001')
 form_class = uic.loadUiType("poketmon.ui")[0]
 target_url = "https://brand.naver.com/samlip/products/6510954368";
 
+chrome_option = webdriver.ChromeOptions()
+chrome_option.add_experimental_option("detach", True)
+
 class WindowClass(QMainWindow, form_class) :
     def __init__(self) :
         super().__init__()
@@ -39,7 +42,7 @@ class WindowClass(QMainWindow, form_class) :
         self.plainTextEdit.appendPlainText('INFORMATION: 페이지 새고고침 시간 [%s]로 설정되었습니다.' % (1))
         self.plainTextEdit.appendPlainText(f'INFORMATION: 매크로 작동 횟수 [{self.re_cnt.value()}] 회로 설정되었습니다.')
         try:
-            driver = self.get_driver()
+            driver = webdriver.Chrome(chrome_options=chrome_option)
             driver.get('https://nid.naver.com/nidlogin.login?mode=form&url=https%3A%2F%2Fwww.naver.com')
             id = base64.b64decode(base64.b64encode(self.lineEdit.text().encode('ascii'))).decode("UTF-8")
             pw = base64.b64decode(base64.b64encode(self.lineEdit_2.text().encode('ascii'))).decode("UTF-8")
