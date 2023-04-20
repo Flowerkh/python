@@ -1,11 +1,11 @@
 import requests
 import json
 
-#https://kauth.kakao.com/oauth/authorize?client_id=REST_KEY&redirect_uri=https://example.com/oauth&response_type=code
+#https://kauth.kakao.com/oauth/authorize?client_id=6e8d6ccad42455b8a2c0979d6c005940&redirect_uri=https://example.com/oauth&response_type=code
 url = 'https://kauth.kakao.com/oauth/token'
 rest_api_key = '6e8d6ccad42455b8a2c0979d6c005940'
 redirect_uri = 'https://example.com/oauth'
-authorize_code = 'Li17IHPK_yeTw7EiI_kRKda3Wh7fgpS8SOzTU8A00CN7nZFfecjBU8DIFMrY9Dyg2JSy4Ao9dRsAAAGGn9jVUQ'
+authorize_code = 'MM76_60rlAx_J0-_WuwqdqsFTltdrGcfaQiQuKIaOD8uCkXmBlJ9O0ELdAFFt7h6q3PjkAoqJVAAAAGHmEk03A'
 
 data = {
     'grant_type':'authorization_code',

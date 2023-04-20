@@ -9,7 +9,7 @@ import json
 
 time = datetime.now()
 #token_path = os.path.dirname(os.path.abspath(__file__))+"/token.txt"
-token_path = "/home/discord/kh_app/token.txt"
+token_path = "/token.txt"
 t = open(token_path, "r", encoding="utf-8")
 lines = t.readlines()
 for line in lines:
