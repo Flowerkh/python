@@ -1,6 +1,6 @@
-AWS 사용
+AWS Lamda 사용
+Python 3.9
 
-Lamda - PHP 연동 선착순 stack queue 사용
-
+* Lamda - PHP 연동 선착순 stack queue 사용
 
 - 사용 방법
