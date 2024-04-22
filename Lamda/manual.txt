@@ -1,0 +1,10 @@
+AWS Lamda 사용
+Python 3.9
+
+* Lamda - PHP 연동 선착순 stack queue 사용
+* 메모리관리 : aws ElastiCache -Memcached 사용
+* 부하 > aws Cloud Watch 모니터링
+
+- 테스트
+postman 에서 테스트 진행 후 운영 적용하였음.
+envet['queryStringParameters'] => url queryString으로 값 입력 (ex. [URL] ?selectLang='userLang'&gToken='gToken'&realID='user_real_id'
