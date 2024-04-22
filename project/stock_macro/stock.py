@@ -34,11 +34,24 @@ def main():
     try:
         line = f.readline()
         ACCESS_TOKEN = line
-        #종목 조회
-        search_arr = search(ACCESS_TOKEN, 'NAS', 'JEPQ')
-        print(search_arr['last'])
 
-        #잔고
+        #종목 금액 조회
+        search_arr = search(ACCESS_TOKEN, 'NAS', 'JEPQ')
+        price = float(search_arr['last'])*dollor
+        data = {
+            'object_type': 'text',
+            'text': f"구매코드 : JEPQ\n현재가 : {round(price,2)}\n환율 : {dollor}",
+            'link': {
+                'web_url': 'https://developers.kakao.com',
+                'mobile_web_url': 'https://developers.kakao.com'
+            },
+        }
+
+        data = {'template_object': json.dumps(data)}
+        response = requests.post(kakao_url, headers=headers, data=data)
+        response.status_code
+
+        #현재 잔고, 구매
         for arr in info(ACCESS_TOKEN,'NASD'):
             price = float(arr['now_pric2']) #현재가
             kor = price*dollor
@@ -65,7 +78,7 @@ def main():
         print(e)
         #f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
         f = open("./token.txt", 'w', encoding='utf-8')
-        f.write(token())
+        #f.write(token())
 
 def token():
     URL = f"{Sync_API.URL_BASE}{Sync_API.PATH}"
