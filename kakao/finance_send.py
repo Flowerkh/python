@@ -6,7 +6,7 @@ with open("kakao_code.json", "r") as kakao:
     kaka_tks = json.load(kakao)
 
 kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
-headers = {"Authorization": "Bearer " + kaka_tks["access_token"] }
+headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
 
 # 환율 사이트 가져오기
 # FRX.KRWUSD : 달러
@@ -38,5 +38,9 @@ data = {
 data = {'template_object': json.dumps(data)}
 response = requests.post(kakao_url, headers=headers, data=data)
 
-print(response)
-print(response.text)
+if response.status_code == 200:
+    print("Success : "+response.text)
+elif response.status_code == 401:
+    print("Refresh : "+response.text)
+else:
+    print("Fail : "+response.text)
