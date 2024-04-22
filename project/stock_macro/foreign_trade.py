@@ -46,7 +46,7 @@ class for_trade:
                 "CANO": Sync_API.ACCOUNT,
                 "ACNT_PRDT_CD": Sync_API.SUB_ACCOUNT,
                 "OVRS_EXCG_CD": KIND,
-                "TR_CRCY_CD":"USD",
+                "TR_CRCY_CD": "USD",
                 "CTX_AREA_FK200": "",
                 "CTX_AREA_NK200": ""
                 }
@@ -61,5 +61,5 @@ class for_trade:
                    }
 
         res = requests.get(URL, headers=headers, params=params)
-
+        print(res)
         return res.json()['output1']

@@ -7,14 +7,19 @@ from datetime import datetime
 time = datetime.now()
 now = datetime.today().strftime("%Y%m%d")
 
-def main():
-    f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
-    w = open("/home/project/stock/log/cron_log"+now+".txt", 'a', encoding='utf-8')
-    #f = open("./token.txt", 'r', encoding='utf-8')
-    #w = open("./log/cron_log.txt", 'a', encoding='utf-8')
-    #with open("kakao_code.json", "r") as kakao:
+"""
+NYS : 뉴욕
+AMS : 아멕스
+NAS : 나스닥
+"""
 
-    with open("/home/project/stock/kakao_code.json", "r") as kakao:
+def main():
+    # f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
+    # w = open("/home/project/stock/log/cron_log"+now+".txt", 'a', encoding='utf-8')
+    f = open("./token.txt", 'r', encoding='utf-8')
+    w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+    with open("../../kakao/kakao_code.json", "r") as kakao:
+    # with open("/home/project/stock/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
 
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
@@ -29,7 +34,11 @@ def main():
     try:
         line = f.readline()
         ACCESS_TOKEN = line
+        #종목 조회
+        search_arr = search(ACCESS_TOKEN, 'NAS', 'JEPQ')
+        print(search_arr['last'])
 
+        #잔고
         for arr in info(ACCESS_TOKEN,'NASD'):
             price = float(arr['now_pric2']) #현재가
             kor = price*dollor
@@ -54,8 +63,8 @@ def main():
 
     except Exception as e:
         print(e)
-        f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
-        #f = open("./token.txt", 'w', encoding='utf-8')
+        #f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
+        f = open("./token.txt", 'w', encoding='utf-8')
         f.write(token())
 
 def token():
@@ -74,14 +83,17 @@ def hashkey(datas):
 
     return hashkey
 
+#가격 조회
 def search(token,kind,code):
     val = for_trade.foreign_search(token, kind, code)
     return val['output']
 
+#거래
 def trade(token,kind,code,price):
     val = for_trade.foreign_trade(token,kind,code,price)
     return val
 
+#잔고
 def info(token,kind):
     return for_trade.my_info(token, kind)
 
