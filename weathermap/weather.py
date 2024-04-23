@@ -35,5 +35,4 @@ data = {
 # 카카오톡 메세지 전송
 data = {'template_object': json.dumps(data)}
 response = requests.post(kakao_url, headers=headers, data=data)
-print(response)
-response.status_code
+print(response.status_code)
