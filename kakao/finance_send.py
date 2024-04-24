@@ -13,7 +13,7 @@ headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
 # FRX.KRWJPY : 엔화
 # FRX.KRWCNY : 위안
 # FRX.KRWEUR : 유로
-finance_url = "https://quotation-api-cdn.dunamu.com/v1/forex/recent?codes=FRX.KRWUSD,FRX.KRWJPY,FRX.KRWEUR"
+finance_url = "https://quotation-api-cdn.dunamu.com/v1/forex/recent?codes=FRX.KRWUSD,FRX.KRWJPY,FRX.KRWEUR,FRX.KRWCNY"
 finance_data = requests.get(finance_url)
 
 if finance_data.status_code == 200:
@@ -22,12 +22,13 @@ if finance_data.status_code == 200:
     usd_price = float(json.dumps(json_data[0]['basePrice'], ensure_ascii=False).strip('"'))
     jpy_price = float(json.dumps(json_data[1]['basePrice'], ensure_ascii=False).strip('"'))
     eur_price = float(json.dumps(json_data[2]['basePrice'], ensure_ascii=False).strip('"'))
+    cny_price = float(json.dumps(json_data[3]['basePrice'], ensure_ascii=False).strip('"'))
 else:
     print(finance_data.status_code)
 
 data = {
     'object_type': 'text',
-    'text': f"오늘의 환율\n1.0 USD : ￦ {usd_price}\n100.0 JPY : ￦ {jpy_price}\n1.0 EUR : ￦ {eur_price}",
+    'text': f"오늘의 환율\n1.0 USD : ￦ {usd_price}\n100.0 JPY : ￦ {jpy_price}\n1.0 EUR : ￦ {eur_price}\n1.0 CNY : ￦ {cny_price}",
     'link': {
         'web_url': 'https://developers.kakao.com',
         'mobile_web_url': 'https://developers.kakao.com'
