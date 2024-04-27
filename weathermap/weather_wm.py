@@ -1,9 +1,7 @@
 import requests
 import json
-"""
-stnld(지역) : 108(전체), 109(수도권), 133(대전), 156(광주), 159(부산), 154(제주)
-"""
 
+#카카오 발송
 def kakao(msg) :
     with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
@@ -24,6 +22,9 @@ def kakao(msg) :
     requests.post(kakao_url, headers=headers, data=data)
     print(msg)
 
+"""
+stnld(지역) : 108(전체), 109(수도권), 133(대전), 156(광주), 159(부산), 154(제주)
+"""
 numOfRows = 10
 dataType = "JSON"
 stnId = "109"
