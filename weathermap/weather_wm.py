@@ -1,6 +1,9 @@
 import requests
 import json
-from kakao.send import kakao
+#from kakao.send import kakao
+import sys
+sys.path.append(r'/var/project/kakao')
+import kakao
 """
 stnld(지역) : 108(전체), 109(수도권), 133(대전), 156(광주), 159(부산), 154(제주)
 """

@@ -1,12 +1,24 @@
-import openpyxl as op
-from openpyxl.workbook.protection import WorkbookProtection
+def switch(operator,num1,num2):
+    return {
+        '+': num1 + num2,
+        '-': num1 - num2,
+        '*': num1 * num2,
+        '/': num1 / num2,
+    }.get(operator, "안댐 돌아가")
 
-wb = op.load_workbook("C:\\Users\\김경하\\Desktop\\이미지 변환\\invoice_xls.xlsx")
-ws = wb.active
-wb.security = WorkbookProtection(workBookPassword = '1234', lockStructure = True)
+def calculator():
+    num1 = float(input("숫자: "))
+    operator = input("골라 (+, -, *, /): ")
+    num2 = float(input("숫자: "))
 
-#wb.security.workbookPassword = '1234'
-#wb.security.lockStructure = True
+    print(f'{switch(operator,num1,num2)}')
 
-# Save Excel file
-wb.save("C:\\Users\\김경하\\Desktop\\이미지 변환\\invoice_xls2.xlsx")
+while True:
+    calculator()
+    repeat = input("또해 시발?: ")
+    if repeat == "N":
+        break
+
+#메인 함수 실행
+if __name__ == "__main__":
+	calculator()
