@@ -5,7 +5,7 @@ stnld(지역) : 108(전체), 109(수도권), 133(대전), 156(광주), 159(부�
 """
 
 def kakao(msg) :
-    with open("/var/project/kakao/kakao_code.json", "r") as kakao:
+    with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
