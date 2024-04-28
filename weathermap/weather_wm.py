@@ -27,7 +27,7 @@ stnld(지역) : 108(전체), 109(수도권), 133(대전), 156(광주), 159(부�
 """
 numOfRows = 10
 dataType = "JSON"
-stnId = "108"
+stnId = "109"
 authKey = "qEFBNuDQS0uBQTbg0JtL0g"
 
 url = f"https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstMsgService/getWthrSituation?pageNo=1&numOfRows={numOfRows}&dataType={dataType}&stnId={stnId}&authKey={authKey}"
