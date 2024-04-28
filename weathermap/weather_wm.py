@@ -19,9 +19,8 @@ def kakao(msg) :
 
     # 카카오톡 메세지 전송
     data = {'template_object': json.dumps(data)}
-    requests.post(kakao_url, headers=headers, data=data)
-    print(requests.status_codes)
-    print(msg)
+    result = requests.post(kakao_url, headers=headers, data=data)
+    print(result)
 
 """
 stnld(지역) : 108(전체), 109(수도권), 133(대전), 156(광주), 159(부산), 154(제주)
