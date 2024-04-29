@@ -1,9 +1,11 @@
 import requests
 import json
+import re
 
 #카카오 발송
 def kakao(msg) :
     with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
+    #with open("../kakao/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
@@ -34,7 +36,9 @@ url = f"https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstMsgService/getWthrS
 response = requests.get(url)
 if response.status_code == 200 :
     result = json.loads(response.text)
-    msg = result['response']['body']['items']['item'][0]['wfSv1'].replace("           ","")
+    #print(result['response']['body']['items']['item'][0])
+    msg = re.sub(' +', ' ', result['response']['body']['items']['item'][0]['wfSv1']+"\n"+result['response']['body']['items']['item'][0]['wn'].replace('o ', ''))
+    print(msg)
     kakao(msg)
 else :
     result = "FAIL Code : 20001"
