@@ -7,6 +7,7 @@
 {
   "id": "발급받은 ID",
   "account" : "사용할 계좌",
+  "sub_account" : "계좌 뒷 2자리",
   "app_key": "발급받은 APP KEY",
   "app_secret": "발급받은 APP_SECRET KEY"
 }
