@@ -37,8 +37,8 @@ response = requests.get(url)
 if response.status_code == 200 :
     result = json.loads(response.text)
     #print(result['response']['body']['items']['item'][0])
-    msg = re.sub(' +', ' ', result['response']['body']['items']['item'][0]['wfSv1']+"\n"+result['response']['body']['items']['item'][0]['wn'].replace('o ', ''))
-    print(msg)
+    msg = re.sub(' +', ' ', result['response']['body']['items']['item'][0]['wfSv1']+"\n\n※ 특이사항 : "+result['response']['body']['items']['item'][0]['wr'].replace('o ', ''))
+    #print(msg)
     kakao(msg)
 else :
     result = "FAIL Code : 20001"
