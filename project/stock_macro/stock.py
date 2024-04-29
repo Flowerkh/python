@@ -25,18 +25,19 @@ def main():
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
     url = "https://quotation-api-cdn.dunamu.com/v1/forex/recent?codes=FRX.KRWUSD"
-    usd = requests.get(url)
-    if usd.status_code == 200:
-        json_data = json.loads(usd.text)
-        dollor = float(json.dumps(json_data[0]['basePrice'],ensure_ascii=False).strip('"'))
+    result = requests.get(url)
+    if result.status_code == 200:
+        json_data = json.loads(result.text)
+        dollor = float(json.dumps(json_data[0]['basePrice'], ensure_ascii=False).strip('"'))
     else:
-        print(usd.status_code)
+        print("error03 : "+result.status_code)
     try:
         line = f.readline()
         ACCESS_TOKEN = line
 
         #종목 금액 조회
         search_arr = search(ACCESS_TOKEN, 'NAS', 'JEPQ')
+        print(search_arr)
         price = float(search_arr['last'])*dollor
         data = {
             'object_type': 'text',
@@ -49,7 +50,7 @@ def main():
 
         data = {'template_object': json.dumps(data)}
         response = requests.post(kakao_url, headers=headers, data=data)
-        response.status_code
+        print(response.status_code)
 
         #현재 잔고, 구매
         for arr in info(ACCESS_TOKEN,'NASD'):
@@ -78,12 +79,11 @@ def main():
         print(e)
         #f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
         f = open("./token.txt", 'w', encoding='utf-8')
-        #f.write(token())
+        f.write(token()) #토큰 없으면 생성
 
 def token():
     URL = f"{Sync_API.URL_BASE}{Sync_API.PATH}"
     res = requests.post(URL, headers=Sync_API.headers, data=json.dumps(Sync_API.body))
-    print(res.json())
     token = res.json()['access_token']
 
     return token
