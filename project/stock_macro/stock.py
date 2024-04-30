@@ -12,6 +12,7 @@ NYS : 뉴욕
 AMS : 아멕스
 NAS : 나스닥
 """
+code = "NAS"
 
 def main():
     # f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
@@ -19,7 +20,7 @@ def main():
     f = open("./token.txt", 'r', encoding='utf-8')
     w = open("./log/cron_log.txt", 'a', encoding='utf-8')
     with open("../../kakao/kakao_code.json", "r") as kakao:
-    # with open("/home/project/stock/kakao_code.json", "r") as kakao:
+        # with open("/home/project/stock/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
 
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
@@ -36,7 +37,7 @@ def main():
         ACCESS_TOKEN = line
 
         #종목 금액 조회
-        search_arr = search(ACCESS_TOKEN, 'NAS', 'JEPQ')
+        search_arr = usd_search(ACCESS_TOKEN, code, 'JEPQ')
         print(search_arr)
         price = float(search_arr['last'])*dollor
         data = {
@@ -97,7 +98,7 @@ def hashkey(datas):
     return hashkey
 
 #가격 조회
-def search(token,kind,code):
+def usd_search(token,kind,code):
     val = for_trade.foreign_search(token, kind, code)
     return val['output']
 
