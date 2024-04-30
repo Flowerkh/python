@@ -13,5 +13,5 @@ print(response)
 
 # kakao_code.json 파일 저장
 tokens = response.json()
-with open("kakao_code.json", "w") as fp:
+with open("/var/project/python/kakao/kakao_code.json", "w") as fp:
     json.dump(tokens, fp)
