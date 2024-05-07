@@ -4,8 +4,8 @@ import re
 
 #카카오 발송
 def kakao(msg) :
-    with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
-    #with open("../kakao/kakao_code.json", "r") as kakao:
+    #with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
+    with open("../kakao/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
@@ -37,7 +37,7 @@ response = requests.get(url)
 if response.status_code == 200 :
     result = json.loads(response.text)
     msg = re.sub(' +', ' ', result['response']['body']['items']['item'][0]['wfSv1']+"\n\n※ 특이사항 : "+result['response']['body']['items']['item'][0]['wr'].replace('o ', ''))
-    #print(msg)
-    kakao(msg)
+    #print(msg.replace(' 곳', ''))
+    kakao(msg.replace(' 곳', ''))
 else :
     result = "FAIL Code : 20001"
