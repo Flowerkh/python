@@ -4,8 +4,8 @@ import re
 
 #카카오 발송
 def kakao(msg) :
-    with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
-    #with open("../kakao/kakao_code.json", "r") as kakao:
+    #with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
+    with open("../kakao/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
@@ -32,6 +32,7 @@ dataType = "JSON"
 stnId = "109"
 authKey = "qEFBNuDQS0uBQTbg0JtL0g"
 
+#https://apihub.kma.go.kr/api/typ01/url/fct_afs_ws.php?stn=109&mode=0&disp=1&help=0&authKey=qEFBNuDQS0uBQTbg0JtL0g
 url = f"https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstMsgService/getWthrSituation?pageNo=1&numOfRows={numOfRows}&dataType={dataType}&stnId={stnId}&authKey={authKey}"
 response = requests.get(url)
 if response.status_code == 200 :
