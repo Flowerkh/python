@@ -12,15 +12,14 @@ NYS : 뉴욕
 AMS : 아멕스
 NAS : 나스닥
 """
-code = "NAS"
 
 def main():
-    # f = open("/home/project/stock/token.txt", 'r', encoding='utf-8')
-    # w = open("/home/project/stock/log/cron_log"+now+".txt", 'a', encoding='utf-8')
-    f = open("./token.txt", 'r', encoding='utf-8')
-    w = open("./log/cron_log.txt", 'a', encoding='utf-8')
-    with open("../../kakao/kakao_code.json", "r") as kakao:
-        # with open("/home/project/stock/kakao_code.json", "r") as kakao:
+    f = open("/var/project/python/stock/token.txt", 'r', encoding='utf-8')
+    w = open("/var/project/python/stock/log/cron_log"+now+".txt", 'a', encoding='utf-8')
+    #f = open("./token.txt", 'r', encoding='utf-8')
+    #w = open("./log/cron_log.txt", 'a', encoding='utf-8')
+    #with open("../../kakao/kakao_code.json", "r") as kakao:
+    with open("/var/project/python/stock/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
 
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
@@ -37,12 +36,15 @@ def main():
         ACCESS_TOKEN = line
 
         #종목 금액 조회
-        search_arr = usd_search(ACCESS_TOKEN, code, 'JEPQ')
-        print(search_arr)
-        price = float(search_arr['last'])*dollor
+        QQQY = usd_search(ACCESS_TOKEN, "NAS", 'QQQY') #나스닥 QQQY
+        QQQM = usd_search(ACCESS_TOKEN, "NAS", 'QQQM') #나스닥 QQQM
+        
+        #종목 환전 금액 (달러 > 원화)
+        qqqm_price = float(QQQM['last'])*dollor
+        qqqy_price = float(QQQY['last'])*dollor
         data = {
             'object_type': 'text',
-            'text': f"구매코드 : JEPQ\n현재가 : {round(price,2)}\n환율 : {dollor}",
+            'text': f"환율 : {dollor}\nQQQM : {round(qqqm_price,2)} 원\nQQQY : {round(qqqy_price,2)} 원",
             'link': {
                 'web_url': 'https://developers.kakao.com',
                 'mobile_web_url': 'https://developers.kakao.com'
@@ -78,8 +80,8 @@ def main():
 
     except Exception as e:
         print(e)
-        #f = open("/home/project/stock/token.txt", 'w', encoding='utf-8')
-        f = open("./token.txt", 'w', encoding='utf-8')
+        f = open("/var/project/python/stock/token.txt", 'w', encoding='utf-8')
+        #f = open("./token.txt", 'w', encoding='utf-8')
         f.write(token()) #토큰 없으면 생성
 
 def token():
