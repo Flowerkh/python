@@ -1,17 +1,13 @@
 import sys,os
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
 
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
-
+service = Service(excutable_path='/var/project/python/chromedriver/chromedriver')
+driver = webdriver.Chrome(service=service)
 driver.implicitly_wait(3)
 
 driver.get('https://www.koreabaseball.com/')
