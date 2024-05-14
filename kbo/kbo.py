@@ -6,11 +6,11 @@ from selenium.webdriver.chrome.service import Service
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
 try:
-    service = Service(executable_path=r'C:/project/python/python/chromedriver.exe')
+    #service = Service(executable_path=r'C:/project/python/python/chromedriver.exe')
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--no-sandbox')
-    #service = Service(excutable_path='/var/project/python/chromedriver/chromedriver')
-    driver = webdriver.Chrome(options=chrome_options)
+    service = Service(excutable_path='/var/project/python/chromedriver/chromedriver')
+    driver = webdriver.Chrome(service=service,options=chrome_options)
     driver.implicitly_wait(3)
 
 except Exception as e:
