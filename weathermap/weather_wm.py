@@ -2,6 +2,8 @@ import requests
 import json
 import re
 from datetime import datetime,timedelta
+import sys
+sys.path.append('/var/project/python/kakao/')
 from kakao import send
 
 #카카오 발송
@@ -76,7 +78,7 @@ if response.status_code == 200:
         # ne_wf = f_lines[3].split(',')[9]  # 하늘상태
 
         msg = f"{today}\n수도권({to_wf}{to_pre})\n기온 : {today_min_tmp}° / {today_max_tmp}°\n강수 확률 : {to_rn_st}%\n\n"
-        kakao(msg)
+        send.kakao(msg)
     else:
         print("FAIL Code : 20002")
 else:
