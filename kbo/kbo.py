@@ -9,6 +9,8 @@ try:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+
     driver = webdriver.Chrome(options=chrome_options)
     driver.implicitly_wait(3)
 
@@ -35,5 +37,5 @@ for key in place_list.keys():
 game = '\n'.join(game_list)
 msg = f"오늘의 경기\n{game}"
 
-print(msg)
-#send.kakao(msg)
+#print(msg)
+send.kakao(msg)
