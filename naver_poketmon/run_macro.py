@@ -21,7 +21,7 @@ parser.add_argument('--option2', required=False, help='구매시 옵션2 선택�
 parser.add_argument('--option3', required=False, help='구매시 옵션3 선택이 필요한 경우 선택할 옵션을 숫자로 입력 [두번째 옵션을 선택하고자 하면 2]')
 args = parser.parse_args()
 
-c_path = "C:/Users/GECL/PycharmProjects/pythonProject/naver_poketmon/chromedriver.exe";
+c_path = "C:/project/python/python/chromedriver.exe";
 target_url = "https://brand.naver.com/samlip/products/6510954368";
 if(args.target):
     target_url = args.target
