@@ -1,6 +1,8 @@
 import sys,os
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
@@ -11,7 +13,7 @@ try:
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
 
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     driver.implicitly_wait(3)
 
 except Exception as e:
