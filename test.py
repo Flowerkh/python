@@ -12,7 +12,7 @@ if response.status_code == 200:
     title = temp[5].find('div',class_='box_head').get_text()
     game = temp[5].find_all(class_='g_schedule')
     game_list = []
-    place_list = {'잠실':'[잠실]', '문학':'[문학]', '수원':'[수원]', '대전':'[대전]', '광주':'[광주]'}
+    place_list = {'잠실':' [잠실] ', '문학':' [문학] ', '수원':' [수원] ', '대전':' [대전] ', '광주':' [광주] '}
     for g in game:
         game_list.append(g.get_text().replace('정보',''))
 
