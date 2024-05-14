@@ -1,6 +1,7 @@
 import requests
 import json
 import re
+from datetime import datetime
 
 #카카오 발송
 def kakao(msg) :
@@ -37,7 +38,7 @@ def file(file_name) :
 
 #강수유무
 def PRE(value) :
-    pre = {"WB09":"비", "WB11":"비/눈", "WB13":"눈/비", "WB12":"눈"}.get(value, "무")
+    pre = {"WB09":" / 비", "WB11":" / 비/눈", "WB13":" / 눈/비", "WB12":" / 눈"}.get(value, "")
     return pre
 
 """
@@ -45,7 +46,7 @@ stnld(지역) : 108(전체), 109(수도권), 133(대전), 156(광주), 159(부�
 reg(지역) : 11B10101(서울), 11B20601(수원), 11C20401(대전), 11F20501(광주), 11H10701(대구), 11H20201(부산)
 f_reg(지역) : 11B00000(수도권), 
 """
-stnId = "109"
+today = datetime.today().strftime("%Y-%m-%d")
 reg = "11B10101"
 f_reg = "11B00000"
 authKey = "qEFBNuDQS0uBQTbg0JtL0g"
@@ -65,7 +66,7 @@ if response.status_code == 200:
         rn_st = f_lines[2].split(',')[10] #강수확률
         wf = f_lines[2].split(',')[9] #하늘상태
 
-        msg = f"수도권({wf} / {pre})\n기온 : {min_tmp}° / {max_tmp}°\n강수 확률 : {rn_st}%"
+        msg = f"{today}\n수도권({wf}{pre})\n기온 : {min_tmp}° / {max_tmp}°\n강수 확률 : {rn_st}%"
         kakao(msg)
     else:
         print("FAIL Code : 20002")
