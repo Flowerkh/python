@@ -1,16 +1,15 @@
 import sys,os
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
 try:
-    #service = Service(executable_path=r'C:/project/python/python/chromedriver.exe')
+
     chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument('--no-sandbox')
-    service = Service(excutable_path=r'/var/project/python/chromedriver.exe')
-    driver = webdriver.Chrome(service=service,options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
     driver.implicitly_wait(3)
 
 except Exception as e:
