@@ -2,13 +2,10 @@ import sys,os
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from pyvirtualdisplay import Display
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
 try:
-    display = Display(visible=0, size=(1920, 1080))
-    display.start()
     #service = Service(executable_path=r'C:/project/python/python/chromedriver.exe')
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--no-sandbox')
