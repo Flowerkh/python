@@ -1,7 +1,7 @@
 import requests
 import json
 import re
-from datetime import datetime
+from datetime import datetime,timedelta
 
 #카카오 발송
 def kakao(msg) :
@@ -47,6 +47,8 @@ reg(지역) : 11B10101(서울), 11B20601(수원), 11C20401(대전), 11F20501(광
 f_reg(지역) : 11B00000(수도권), 
 """
 today = datetime.today().strftime("%Y-%m-%d")
+tomorrow = datetime.today()+timedelta(days=1)
+tomorrow = tomorrow.strftime("%Y-%m-%d")
 reg = "11B10101"
 f_reg = "11B00000"
 authKey = "qEFBNuDQS0uBQTbg0JtL0g"
@@ -55,18 +57,24 @@ w_url = f"https://apihub.kma.go.kr/api/typ01/url/fct_afs_wc.php?reg={reg}&mode=0
 response = requests.get(w_url)
 if response.status_code == 200:
     w_lines = file('weather_text')
-    min_tmp = w_lines[2].split(',')[6]
-    max_tmp = w_lines[2].split(',')[7]
+    today_min_tmp = w_lines[2].split(',')[6]
+    today_max_tmp = w_lines[2].split(',')[7]
+    # tomorrow_min_tmp = w_lines[3].split(',')[6]
+    # tomorrow_max_tmp = w_lines[3].split(',')[7]
 
     wf_url = f"https://apihub.kma.go.kr/api/typ01/url/fct_afs_wl.php?reg={f_reg}&mode=0&disp=1&help=0&authKey={authKey}"
     response = requests.get(wf_url)
     if response.status_code == 200:
         f_lines = file('fweather_text')
-        pre = PRE(f_lines[2].split(',')[7]) #강수유무
-        rn_st = f_lines[2].split(',')[10] #강수확률
-        wf = f_lines[2].split(',')[9] #하늘상태
+        to_pre = PRE(f_lines[2].split(',')[7])  # 강수유무
+        to_rn_st = f_lines[2].split(',')[10]  # 강수확률
+        to_wf = f_lines[2].split(',')[9]  # 하늘상태
 
-        msg = f"{today}\n수도권({wf}{pre})\n기온 : {min_tmp}° / {max_tmp}°\n강수 확률 : {rn_st}%"
+        # ne_pre = PRE(f_lines[3].split(',')[7])  # 강수유무
+        # ne_rn_st = f_lines[3].split(',')[10]  # 강수확률
+        # ne_wf = f_lines[3].split(',')[9]  # 하늘상태
+
+        msg = f"{today}\n수도권({to_wf}{to_pre})\n기온 : {today_min_tmp}° / {today_max_tmp}°\n강수 확률 : {to_rn_st}%\n\n"
         kakao(msg)
     else:
         print("FAIL Code : 20002")
