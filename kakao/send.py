@@ -2,7 +2,8 @@ import requests
 import json
 
 def kakao(msg) :
-    with open("../kakao/kakao_code.json", "r") as kakao:
+    with open("/var/project/python/kakao/kakao_code.json", "r") as kakao:
+    #with open("./kakao/kakao_code.json", "r") as kakao:
         kaka_tks = json.load(kakao)
     kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     headers = {"Authorization": "Bearer " + kaka_tks["access_token"]}
@@ -18,5 +19,5 @@ def kakao(msg) :
 
     # 카카오톡 메세지 전송
     data = {'template_object': json.dumps(data)}
-    requests.post(kakao_url, headers=headers, data=data)
-    print(msg)
+    result = requests.post(kakao_url, headers=headers, data=data)
+    print(result)
