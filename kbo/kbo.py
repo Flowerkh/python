@@ -9,7 +9,7 @@ try:
     #service = Service(executable_path=r'C:/project/python/python/chromedriver.exe')
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--no-sandbox')
-    service = Service(excutable_path='/var/project/python/chromedriver/chromedriver')
+    service = Service(excutable_path='/var/project/python/chromedriver.exe')
     driver = webdriver.Chrome(service=service,options=chrome_options)
     driver.implicitly_wait(3)
 
