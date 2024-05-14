@@ -2,8 +2,8 @@ import requests
 import json
 import re
 from datetime import datetime,timedelta
-import sys
-sys.path.append('/var/project/python/kakao/')
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
 
 #카카오 발송
