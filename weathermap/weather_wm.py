@@ -54,7 +54,7 @@ if response.status_code == 200:
               f"\n습도 : {informations['0600']['REH']}% / {informations['1400']['REH']}%" \
               f"\n강수 : {informations['0600']['POP']}%{PCP_am} / {informations['1400']['POP']}%{PCP_pm}"\
               f"\n풍속 : {informations['0600']['WSD']} ㎧ / {informations['1400']['WSD']} ㎧"
-        print(msg)
-        #send.kakao(msg)
+        #print(msg)
+        send.kakao(msg)
 else:
     print('통신 오류')
