@@ -39,5 +39,5 @@ for key in place_list.keys():
 game = '\n'.join(game_list)
 msg = f"오늘의 경기\n{game}"
 
-#print(msg)
-send.kakao(msg)
+print(msg)
+#send.kakao(msg)
