@@ -6,7 +6,6 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
 
 today = datetime.today().strftime("%Y%m%d")
-
 def weather(nx,ny):
     api_key = "85hmTOqqno6bPzurtS3Kehoh5FPFtpaUhLkk14l8I/3tOnROTqRRPjCwbY5HgdLF04FlaURUQaeqXvoB0EK5Tw=="
     base_date = today
@@ -26,7 +25,7 @@ if response.status_code == 200:
     try:
         # category : TMP : 온도, SKY : 하늘 상태, PCP : 강수량, PTY: 강수형태, REH:습도
         sky_code = {'1': '맑음', '3': '구름많음', '4': '흐림'}
-        pty_code = {'0': '화창', '1': '비', '2': '비눈', '3': '눈', '5': '빗방울', '6': '진눈깨비', '7': '눈날림'}
+        pty_code = {'0': '강수없음', '1': '비', '2': '비눈', '3': '눈', '5': '빗방울', '6': '진눈깨비', '7': '눈날림'}
         informations = dict()
 
         for data in res['response']['body']['items']['item']:
@@ -46,12 +45,16 @@ if response.status_code == 200:
         print('LOG: Error [%s]' % (str(e)))
         exit()
     else:
+        PCP_am = "" if informations['0600']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
+        PCP_pm = "" if informations['1400']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
+
         msg = f"오늘의 날씨 (오전/오후)" \
+              f"\n구름 : {sky_code[informations['0600']['SKY']]} / {sky_code[informations['1400']['SKY']]}" \
               f"\n기온 : {informations['0600']['TMP']}°C / {informations['1400']['TMP']}°C" \
-              f"\n습도 : {informations['0600']['POP']}% / {informations['1400']['POP']}%" \
-              f"\n구름 : {sky_code[informations['0600']['SKY']]} / {sky_code[informations['1400']['SKY']]}"\
-              f"\n강수 : {informations['0600']['PCP']} / {informations['1400']['PCP']}"\
-              f"\n풍속 : {informations['0600']['WSD']}m/s / {informations['1400']['WSD']}m/s"
-        send.kakao(msg)
+              f"\n습도 : {informations['0600']['REH']}% / {informations['1400']['REH']}%" \
+              f"\n강수 : {informations['0600']['POP']}%{PCP_am} / {informations['1400']['POP']}%{PCP_pm}"\
+              f"\n풍속 : {informations['0600']['WSD']} ㎧ / {informations['1400']['WSD']} ㎧"
+        print(msg)
+        #send.kakao(msg)
 else:
     print('통신 오류')
