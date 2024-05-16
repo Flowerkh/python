@@ -45,8 +45,8 @@ if response.status_code == 200:
         print('LOG: Error [%s]' % (str(e)))
         exit()
     else:
-        PCP_am = "" if informations['0600']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
-        PCP_pm = "" if informations['1400']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
+        PCP_am = "(0mm)" if informations['0600']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
+        PCP_pm = "(0mm)" if informations['1400']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
 
         msg = f"오늘의 날씨 (오전/오후)" \
               f"\n구름 : {sky_code[informations['0600']['SKY']]} / {sky_code[informations['1400']['SKY']]}" \
