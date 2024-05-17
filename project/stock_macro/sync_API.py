@@ -7,8 +7,9 @@ import json
 
 def get_config():
 	try:
-		with open('KIS_key.json') as json_file:
-			json_data = json.load(json_file)
+		#with open('KIS_key.json') as json_file:
+            with open('/var/project/python/project/stock_macro/KIS_key.json') as json_file:
+                json_data = json.load(json_file)
 	except Exception as e:
 		print('LOG: Error in reading config file, {}'.format(e))
 		return None
