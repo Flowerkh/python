@@ -53,11 +53,14 @@ def main():
             # SCHD 구매
             if schd_price <= 110000.99:
                 result = trade(ACCESS_TOKEN, 'AMS', 'SCHD', SCHD['last'])
-                w.write(f'[{now_min}] SCHD 구매 : [%s]' % result)
+                msg = msg + f'\n[{now_min}] SCHD 구매 : [%s]' % result
             # QQQY 구매
             if schd_price <= 25000.99:
                 result = trade(ACCESS_TOKEN, 'NAS', 'QQQY', QQQY['last'])
-                w.write(f'[{now_min}] QQQY 구매 : [%s]' % result)
+                msg = msg + f'\n[{now_min}] QQQY 구매 : [%s]' % result
+
+            print(msg)
+            # 카카오 메신저 발송
             send.kakao(msg)
 
         except Exception as e:
