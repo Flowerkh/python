@@ -1,9 +1,9 @@
+import json
 '''
 @조회 : foreign_pr_PATH
 @구매 : foreign_pay_PATH
 @잔고 : foreign_info_PATH
 '''
-import json
 
 def get_config():
 	try:

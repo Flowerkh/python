@@ -18,8 +18,8 @@ AMS : 아멕스
 NAS : 나스닥
 """
 def main():
-    f = open("/var/project/python/stock/token.txt", 'r', encoding='utf-8')
-    w = open("/var/project/python/stock/log/cron_log"+now+".txt", 'a', encoding='utf-8')
+    f = open("/var/project/python/stock/project/stock_macro/token.txt", 'r', encoding='utf-8')
+    w = open("/var/project/python/stock/project/stock_macrolog/cron_log"+now+".txt", 'a', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
     #w = open("./log/cron_log"+now+".txt", 'a', encoding='utf-8')
 
@@ -63,7 +63,7 @@ def main():
 
         except Exception as e:
             w.write(f'[{now_min}] Error [%s]' % (str(e)))
-            f = open("/var/project/python/stock/token.txt", 'w', encoding='utf-8')
+            f = open("/var/project/python/stock/project/stock_macro/token.txt", 'w', encoding='utf-8')
             #f = open("./token.txt", 'w', encoding='utf-8')
             f.write(token())  # 토큰 없으면 생성
             main()
