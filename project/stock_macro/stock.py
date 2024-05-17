@@ -53,20 +53,25 @@ def main():
             # SCHD 구매
             if schd_price <= 110000:
                 result = trade(ACCESS_TOKEN, 'AMS', 'SCHD', SCHD['last'])
-                msg = msg + f'\n[{time}] SCHD 구매 : [%s]' % result
+                msg = msg + f'\n[{time}] SCHD 구매'
             # QQQY 구매
             if qqqy_price <= 25000:
-                result = trade(ACCESS_TOKEN, 'NAS', 'QQQY', QQQY['last'])
-                msg = msg + f'\n[{time}] QQQY 구매 : [%s]' % result
+                for i in range(0, 2):
+                    result = trade(ACCESS_TOKEN, 'NAS', 'QQQY', QQQY['last'])
+                    print(result)
+                    if 'msg1' in result.keys(): #msg1 체크
+                        break
+                    i = i + 1
+                msg = msg + f'\n[{time}] QQQY {i}회 구매'
 
             print(msg)
             # 카카오 메신저 발송
-            send.kakao(msg)
+            #send.kakao(msg)
 
         except Exception as e:
             w.write(f'[{time}] Error [%s]' % (str(e)))
-            f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
-            #f = open("./token.txt", 'w', encoding='utf-8')
+            #f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
+            f = open("./token.txt", 'w', encoding='utf-8')
             f.write(token())  # 토큰 없으면 생성
             main()
     else:
