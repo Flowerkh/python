@@ -1,7 +1,9 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from foreign_trade import *
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from sync_API import *
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from kakao import send
 import requests
 import json
