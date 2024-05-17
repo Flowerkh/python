@@ -18,7 +18,7 @@ def main():
     now_min = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
 
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
-    w = open("/var/project/python/project/stock_macro/cron_log"+now+".txt", 'a', encoding='utf-8')
+    w = open("/var/project/python/project/stock_macro/cron_log.txt", 'w', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
     #w = open("./log/cron_log"+now+".txt", 'a', encoding='utf-8')
 
