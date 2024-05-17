@@ -2,10 +2,10 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from foreign_trade import *
 from sync_API import *
+from kakao import send
 import requests
 import json
 from datetime import datetime
-from kakao import send
 
 time = datetime.now()
 now = datetime.today().strftime("%Y%m%d")
