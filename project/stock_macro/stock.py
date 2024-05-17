@@ -66,7 +66,7 @@ def main():
 
             print(msg)
             # 카카오 메신저 발송
-            #send.kakao(msg)
+            send.kakao(msg)
 
         except Exception as e:
             w.write(f'[{time}] Error [%s]' % (str(e)))
