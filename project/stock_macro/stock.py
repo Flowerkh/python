@@ -15,10 +15,10 @@ NAS : 나스닥
 """
 def main():
     now = datetime.today().strftime("%Y%m%d")
-    now_min = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+    time = datetime.today().strftime("%H:%M:%S")
 
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
-    w = open("/var/project/python/project/stock_macro/cron_log.txt", 'w', encoding='utf-8')
+    w = open("/var/project/python/project/stock_macro/cron_log.txt"+now+".txt", 'a', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
     #w = open("./log/cron_log"+now+".txt", 'a', encoding='utf-8')
 
@@ -51,20 +51,20 @@ def main():
             #info_result = info(ACCESS_TOKEN, "NASD")
 
             # SCHD 구매
-            if schd_price <= 110000.99:
+            if schd_price <= 110000:
                 result = trade(ACCESS_TOKEN, 'AMS', 'SCHD', SCHD['last'])
-                msg = msg + f'\n[{now_min}] SCHD 구매 : [%s]' % result
+                msg = msg + f'\n[{time}] SCHD 구매 : [%s]' % result
             # QQQY 구매
-            if schd_price <= 25000.99:
+            if qqqy_price <= 25000:
                 result = trade(ACCESS_TOKEN, 'NAS', 'QQQY', QQQY['last'])
-                msg = msg + f'\n[{now_min}] QQQY 구매 : [%s]' % result
+                msg = msg + f'\n[{time}] QQQY 구매 : [%s]' % result
 
             print(msg)
             # 카카오 메신저 발송
             send.kakao(msg)
 
         except Exception as e:
-            w.write(f'[{now_min}] Error [%s]' % (str(e)))
+            w.write(f'[{time}] Error [%s]' % (str(e)))
             f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
             #f = open("./token.txt", 'w', encoding='utf-8')
             f.write(token())  # 토큰 없으면 생성
