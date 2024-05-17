@@ -8,16 +8,15 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/var/project/python/kakao'))))
 from kakao import send
 
-time = datetime.now()
-now = datetime.today().strftime("%Y%m%d")
-now_min = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-
 """
 NYS : 뉴욕
 AMS : 아멕스
 NAS : 나스닥
 """
 def main():
+    now = datetime.today().strftime("%Y%m%d")
+    now_min = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
     w = open("/var/project/python/project/stock_macro/cron_log"+now+".txt", 'a', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
