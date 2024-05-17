@@ -1,12 +1,12 @@
 import sys, os
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/var/project/python/kakao'))))
-from kakao import send
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/var/project/python/project/stock_macro'))))
 from foreign_trade import *
 from sync_API import *
 import requests
 import json
 from datetime import datetime
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/var/project/python/kakao'))))
+from kakao import send
 
 time = datetime.now()
 now = datetime.today().strftime("%Y%m%d")
