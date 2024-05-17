@@ -57,7 +57,7 @@ class for_trade:
                    "authorization": f"Bearer {ACCESS_TOKEN}",
                    "appKey": Sync_API.APP_KEY,
                    "appSecret": Sync_API.APP_SECRET,
-                   "custtype":"P",
+                   "custtype": "P",
                    "tr_id": "TTTS3012R", #실전 : TTTS3012R, 모의 : VTTS3012R
                    "hashkey": hashkey(params)
                    }

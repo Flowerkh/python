@@ -28,6 +28,7 @@ class Sync_API:
     URL_BASE = "https://openapi.koreainvestment.com:9443"
     PATH = "/oauth2/tokenP"
 
+    #해외 주식
     foreign_pr_PATH = "/uapi/overseas-price/v1/quotations/price"
     foreign_pay_PATH = "/uapi/overseas-stock/v1/trading/order"
     foreign_info_PATH = "/uapi/overseas-stock/v1/trading/inquire-balance"
