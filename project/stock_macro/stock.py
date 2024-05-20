@@ -18,7 +18,7 @@ def main():
     time = datetime.today().strftime("%H:%M:%S")
 
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
-    w = open("/var/project/python/project/stock_macro/cron_log.txt"+now+".txt", 'a', encoding='utf-8')
+    w = open("/var/project/python/project/stock_macro/cron_log_"+now+".txt", 'a', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
     #w = open("./log/cron_log"+now+".txt", 'a', encoding='utf-8')
 
@@ -69,7 +69,7 @@ def main():
             send.kakao(msg)
 
         except Exception as e:
-            w.write(f'[{time}] Error [%s]' % (str(e)))
+            w.write(f'Error [%s]' % (str(e)))
             f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
             #f = open("./token.txt", 'w', encoding='utf-8')
             f.write(token())  # 토큰 없으면 생성
