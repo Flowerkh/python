@@ -70,8 +70,8 @@ def main():
 
         except Exception as e:
             w.write(f'[{time}] Error [%s]' % (str(e)))
-            #f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
-            f = open("./token.txt", 'w', encoding='utf-8')
+            f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
+            #f = open("./token.txt", 'w', encoding='utf-8')
             f.write(token())  # 토큰 없으면 생성
             main()
     else:
