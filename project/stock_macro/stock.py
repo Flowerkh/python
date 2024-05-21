@@ -51,13 +51,12 @@ def main():
             if schd_price <= 110000:
                 price = round(float(SCHD['last']), 2)
                 result = trade(ACCESS_TOKEN, 'AMEX', 'SCHD', str(price))
-                msg = msg + f'\n[{time}] SCHD 구매({result})'
+                msg = msg + f'\n[{time}] SCHD 구매({result["msg1"]})'
             # QQQY 구매
             if qqqy_price <= 25000:
-                for i in range(0, 2):
-                    price = round(float(QQQY['last']), 2)
-                    result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
-                msg = msg + f'\n[{time}] QQQY 구매({result})'
+                price = round(float(QQQY['last']), 2)
+                result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
+                msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
 
             print(msg)
             # 카카오 메신저 발송
@@ -68,7 +67,6 @@ def main():
             f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
             #f = open("./token.txt", 'w', encoding='utf-8')
             f.write(token())  # 토큰 없으면 생성
-            #main()
     else:
         print("error03 : "+result.status_code)
 
