@@ -35,7 +35,7 @@ class for_trade:
                    "authorization": f"Bearer {ACCESS_TOKEN}",
                    "appKey": Sync_API.APP_KEY,
                    "appSecret": Sync_API.APP_SECRET,
-                   "tr_id": "JTTT1002U",
+                   "tr_id": "TTTT1002U",
                    "custtype": "P",
                    "hashkey": hashkey(data)}
         res = requests.post(URL, headers=headers, data=json.dumps(data))

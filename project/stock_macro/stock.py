@@ -14,7 +14,6 @@ AMS : 아멕스
 NAS : 나스닥
 """
 def main():
-    now = datetime.today().strftime("%Y%m%d")
     time = datetime.today().strftime("%H:%M:%S")
 
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
@@ -50,16 +49,15 @@ def main():
 
             # SCHD 구매
             if schd_price <= 110000:
-                result = trade(ACCESS_TOKEN, 'AMS', 'SCHD', SCHD['last'])
+                price = round(float(SCHD['last']), 2)
+                result = trade(ACCESS_TOKEN, 'AMEX', 'SCHD', str(price))
                 msg = msg + f'\n[{time}] SCHD 구매({result})'
             # QQQY 구매
             if qqqy_price <= 25000:
                 for i in range(0, 2):
-                    result = trade(ACCESS_TOKEN, 'NAS', 'QQQY', QQQY['last'])
-                    if 'msg1' in result.keys(): #msg1 체크
-                        break
-                    i = i + 1
-                msg = msg + f'\n[{time}] QQQY {i}회 구매({result})'
+                    price = round(float(QQQY['last']), 2)
+                    result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
+                msg = msg + f'\n[{time}] QQQY 구매({result})'
 
             print(msg)
             # 카카오 메신저 발송
@@ -70,7 +68,7 @@ def main():
             f = open("/var/project/python/project/stock_macro/token.txt", 'w', encoding='utf-8')
             #f = open("./token.txt", 'w', encoding='utf-8')
             f.write(token())  # 토큰 없으면 생성
-            main()
+            #main()
     else:
         print("error03 : "+result.status_code)
 
@@ -96,6 +94,11 @@ def usd_search(token, kind, code):
 
 #거래
 def trade(token, kind, code, price):
+    """
+    NASD : 나스닥
+    NYSE : 뉴욕
+    AMEX : 아멕스
+    """
     val = for_trade.foreign_trade(token,kind,code,price)
     return val
 
