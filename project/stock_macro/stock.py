@@ -53,7 +53,7 @@ def main():
                 result = trade(ACCESS_TOKEN, 'AMEX', 'SCHD', str(price))
                 msg = msg + f'\n[{time}] SCHD 구매({result["msg1"]})'
             # QQQY 구매
-            if qqqy_price <= 25000:
+            if qqqy_price <= 20700:
                 price = round(float(QQQY['last']), 2)
                 result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
                 msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
@@ -92,18 +92,16 @@ def usd_search(token, kind, code):
 
 #거래
 def trade(token, kind, code, price):
-    """
-    NASD : 나스닥
-    NYSE : 뉴욕
-    AMEX : 아멕스
-    """
+    #NASD : 나스닥
+    #NYSE : 뉴욕
+    #AMEX : 아멕스
     val = for_trade.foreign_trade(token,kind,code,price)
     return val
 
 #잔고
 def info(token,kind):
     #NASD : 미국 전체
-    #NAS : 나스닥
+    #NAS  : 나스닥
     #NYSE : 뉴욕
     #AMEX : 아멕스
     return for_trade.my_info(token, kind)
