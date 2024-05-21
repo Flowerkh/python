@@ -39,6 +39,7 @@ class for_trade:
                    "custtype": "P",
                    "hashkey": hashkey(data)}
         res = requests.post(URL, headers=headers, data=json.dumps(data))
+
         return res.json()
 
     #해외 잔고
@@ -63,5 +64,5 @@ class for_trade:
                    }
 
         res = requests.get(URL, headers=headers, params=params)
-        print(res)
+
         return res.json()['output1']

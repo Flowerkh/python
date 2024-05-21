@@ -18,9 +18,7 @@ def main():
     time = datetime.today().strftime("%H:%M:%S")
 
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
-    w = open("/var/project/python/project/stock_macro/cron_log_"+now+".txt", 'a', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
-    #w = open("./log/cron_log"+now+".txt", 'a', encoding='utf-8')
 
     url = "https://quotation-api-cdn.dunamu.com/v1/forex/recent?codes=FRX.KRWUSD"
     result = requests.get(url)
@@ -47,22 +45,21 @@ def main():
                   f"\nQQQY : {round(qqqy_price, 2)} 원" \
                   f"\nSCHD : {round(schd_price, 2)} 원"
 
-            # 현재 잔고, 구매
+            # 현재 해외 잔고, 구매
             #info_result = info(ACCESS_TOKEN, "NASD")
 
             # SCHD 구매
             if schd_price <= 110000:
                 result = trade(ACCESS_TOKEN, 'AMS', 'SCHD', SCHD['last'])
-                msg = msg + f'\n[{time}] SCHD 구매'
+                msg = msg + f'\n[{time}] SCHD 구매({result})'
             # QQQY 구매
             if qqqy_price <= 25000:
                 for i in range(0, 2):
                     result = trade(ACCESS_TOKEN, 'NAS', 'QQQY', QQQY['last'])
-                    print(result)
                     if 'msg1' in result.keys(): #msg1 체크
                         break
                     i = i + 1
-                msg = msg + f'\n[{time}] QQQY {i}회 구매'
+                msg = msg + f'\n[{time}] QQQY {i}회 구매({result})'
 
             print(msg)
             # 카카오 메신저 발송
