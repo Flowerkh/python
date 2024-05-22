@@ -33,24 +33,27 @@ def main():
             QQQY = usd_search(ACCESS_TOKEN, "NAS", 'QQQY')  # 나스닥 QQQY
             QQQM = usd_search(ACCESS_TOKEN, "NAS", 'QQQM')  # 나스닥 QQQM
             SCHD = usd_search(ACCESS_TOKEN, "AMS", 'SCHD')  # 아맥스 SCHD
+            SPLG = usd_search(ACCESS_TOKEN, "AMS", 'SPLG')  # 뉴욕 SPLG
 
             # 종목 환전 금액 (달러 > 원화)
             qqqm_price = float(QQQM['last']) * dollor
             qqqy_price = float(QQQY['last']) * dollor
             schd_price = float(SCHD['last']) * dollor
+            splg_price = float(SPLG['last']) * dollor
 
             msg = f"환율 : {dollor}" \
-                  f"\nQQQM : {round(qqqm_price, 2)} 원" \
-                  f"\nQQQY : {round(qqqy_price, 2)} 원" \
-                  f"\nSCHD : {round(schd_price, 2)} 원"
+                  f"\nQQQM : {round(qqqm_price, 2)} 원(${round(float(QQQM['last']), 2)})" \
+                  f"\nQQQY : {round(qqqy_price, 2)} 원(${round(float(QQQY['last']), 2)})" \
+                  f"\nSCHD : {round(schd_price, 2)} 원(${round(float(SCHD['last']), 2)})" \
+                  f"\nSPLG : {round(splg_price, 2)} 원(${round(float(SPLG['last']), 2)})"
 
             # 현재 해외 잔고, 구매
             #info_result = info(ACCESS_TOKEN, "NASD")
-            # SCHD 구매
-            if schd_price <= 110000:
-                price = round(float(SCHD['last']), 2)
-                result = trade(ACCESS_TOKEN, 'AMEX', 'SCHD', str(price))
-                msg = msg + f'\n[{time}] SCHD 구매({result["msg1"]})'
+            # SPLG 구매
+            if splg_price <= 100000:
+                price = round(float(SPLG['last']), 2)
+                result = trade(ACCESS_TOKEN, 'AMEX', 'SPLG', str(price))
+                msg = msg + f'\n[{time}] SPLG 구매({result["msg1"]})'
             # QQQY 구매
             if qqqy_price <= 20800:
                 price = round(float(QQQY['last']), 2)
