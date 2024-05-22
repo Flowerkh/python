@@ -46,14 +46,13 @@ def main():
 
             # 현재 해외 잔고, 구매
             #info_result = info(ACCESS_TOKEN, "NASD")
-
             # SCHD 구매
             if schd_price <= 110000:
                 price = round(float(SCHD['last']), 2)
                 result = trade(ACCESS_TOKEN, 'AMEX', 'SCHD', str(price))
                 msg = msg + f'\n[{time}] SCHD 구매({result["msg1"]})'
             # QQQY 구매
-            if qqqy_price <= 20700:
+            if qqqy_price <= 20800:
                 price = round(float(QQQY['last']), 2)
                 result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
                 msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
