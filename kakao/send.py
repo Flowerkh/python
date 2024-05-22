@@ -19,5 +19,7 @@ def kakao(msg) :
 
     # 카카오톡 메세지 전송
     data = {'template_object': json.dumps(data)}
-    result = requests.post(kakao_url, headers=headers, data=data)
-    print(result.text)
+    try:
+        requests.post(kakao_url, headers=headers, data=data)
+    except Exception as e:
+        print(f'kakao Error [%s]' % (str(e)))
