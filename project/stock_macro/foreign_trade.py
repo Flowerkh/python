@@ -27,6 +27,7 @@ class for_trade:
                 "ORD_QTY": "1",
                 "OVRS_ORD_UNPR": price,
                 "CTAC_TLNO": "",
+                #"SLL_TYPE": "00", #제거 : 매수, 00 : 매도
                 "MGCO_APTM_ODNO": "",
                 "ORD_SVR_DVSN_CD": "0",
                 "ORD_DVSN": "00"
