@@ -55,7 +55,7 @@ def main():
                 result = trade(ACCESS_TOKEN, 'AMEX', 'SPLG', str(price))
                 msg = msg + f'\n[{time}] SPLG 구매({result["msg1"]})'
             # QQQY 구매
-            if qqqy_price <= 20800:
+            if qqqy_price <= 21000:
                 price = round(float(QQQY['last']), 2)
                 result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
                 msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
