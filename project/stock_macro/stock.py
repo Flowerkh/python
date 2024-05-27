@@ -47,8 +47,6 @@ def main():
                   f"\nSCHD : {round(schd_price, 2)} 원(${round(float(SCHD['last']), 2)})" \
                   f"\nSPLG : {round(splg_price, 2)} 원(${round(float(SPLG['last']), 2)})"
 
-            # 현재 해외 잔고, 구매
-            #info_result = info(ACCESS_TOKEN, "NASD")
             # SPLG 구매
             if splg_price <= 100000:
                 price = round(float(SPLG['last']), 2)
@@ -59,6 +57,12 @@ def main():
                 price = round(float(QQQY['last']), 2)
                 result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
                 msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
+
+            # 현재 해외 잔고
+            info_result = info(ACCESS_TOKEN, "NASD")
+            msg = msg + "\n★★★수익률★★★"
+            for info_data in info_result:
+                msg = msg + f"\n{info_data['ovrs_pdno']}({info_data['ord_psbl_qty']}) : {info_data['evlu_pfls_rt']}%"
 
             print(msg)
             # 카카오 메신저 발송
