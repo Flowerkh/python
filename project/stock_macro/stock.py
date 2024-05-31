@@ -44,11 +44,11 @@ def main():
             nvda_price = float(NVDA['last']) * dollor
 
             msg = f"환율 : {dollor}" \
-                  f"\n엔비디아 : {round(nvda_price, 2)} 원(${round(float(NVDA['last']), 2)})" \
-                  f"\nQQQM : {round(qqqm_price, 2)} 원(${round(float(QQQM['last']), 2)})" \
-                  f"\nQQQY : {round(qqqy_price, 2)} 원(${round(float(QQQY['last']), 2)})" \
-                  f"\nSCHD : {round(schd_price, 2)} 원(${round(float(SCHD['last']), 2)})" \
-                  f"\nSPLG : {round(splg_price, 2)} 원(${round(float(SPLG['last']), 2)})"
+                  f"\n엔비디아 : {format(round(nvda_price, 2),',')} 원(${format(round(float(NVDA['last']), 2),',')})" \
+                  f"\nQQQM : {format(round(qqqm_price, 2),',')} 원(${format(round(float(QQQM['last']), 2),',')})" \
+                  f"\nQQQY : {format(round(qqqy_price, 2),',')} 원(${format(round(float(QQQY['last']), 2),',')})" \
+                  f"\nSCHD : {format(round(schd_price, 2),',')} 원(${format(round(float(SCHD['last']), 2),',')})" \
+                  f"\nSPLG : {format(round(splg_price, 2),',')} 원(${format(round(float(SPLG['last']), 2),',')})"
 
             # SPLG 구매
             if splg_price <= 100000:
