@@ -31,6 +31,7 @@ def main():
 
             # 종목 금액 조회
             QQQY = usd_search(ACCESS_TOKEN, "NAS", 'QQQY')  # 나스닥 QQQY
+            NVDA = usd_search(ACCESS_TOKEN, "NAS", 'NVDA')  # 나스닥 엔비디아
             QQQM = usd_search(ACCESS_TOKEN, "NAS", 'QQQM')  # 나스닥 QQQM
             SCHD = usd_search(ACCESS_TOKEN, "AMS", 'SCHD')  # 아맥스 SCHD
             SPLG = usd_search(ACCESS_TOKEN, "AMS", 'SPLG')  # 뉴욕 SPLG
@@ -40,8 +41,10 @@ def main():
             qqqy_price = float(QQQY['last']) * dollor
             schd_price = float(SCHD['last']) * dollor
             splg_price = float(SPLG['last']) * dollor
+            nvda_price = float(NVDA['last']) * dollor
 
             msg = f"환율 : {dollor}" \
+                  f"\n엔비디아 : {round(nvda_price, 2)} 원(${round(float(NVDA['last']), 2)})" \
                   f"\nQQQM : {round(qqqm_price, 2)} 원(${round(float(QQQM['last']), 2)})" \
                   f"\nQQQY : {round(qqqy_price, 2)} 원(${round(float(QQQY['last']), 2)})" \
                   f"\nSCHD : {round(schd_price, 2)} 원(${round(float(SCHD['last']), 2)})" \
