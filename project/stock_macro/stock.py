@@ -56,23 +56,21 @@ def main():
                 #NVDA 구매
                 price = round(float(NVDA['last']), 2)
                 result = trade(ACCESS_TOKEN, 'NASD', 'NVDA', str(price))
-                msg = msg + f'\n[{time}] NVDA 구매({result["msg1"]})'
             elif int(info_dic['QQQY']) > int(info_dic['SPLG']):
                 # SPLG 구매
                 if splg_price <= 100000:
                     price = round(float(SPLG['last']), 2)
                     result = trade(ACCESS_TOKEN, 'AMEX', 'SPLG', str(price))
-                    msg = msg + f'\n[{time}] SPLG 구매({result["msg1"]})'
             else:
                 # QQQY 구매
                 if qqqy_price <= 21000:
                     price = round(float(QQQY['last']), 2)
                     result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
-                    msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
 
             print(msg)
             # 카카오 메신저 발송
-            send.kakao(msg)
+            if datetime.now().strftime('%H:%M') >= "04:10":
+                send.kakao(msg)
 
         except Exception as e:
             print(f'Error [%s]' % (str(e)))
