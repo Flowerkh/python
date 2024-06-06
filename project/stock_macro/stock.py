@@ -32,40 +32,43 @@ def main():
             # 종목 금액 조회
             QQQY = usd_search(ACCESS_TOKEN, "NAS", 'QQQY')  # 나스닥 QQQY
             NVDA = usd_search(ACCESS_TOKEN, "NAS", 'NVDA')  # 나스닥 엔비디아
-            QQQM = usd_search(ACCESS_TOKEN, "NAS", 'QQQM')  # 나스닥 QQQM
-            SCHD = usd_search(ACCESS_TOKEN, "AMS", 'SCHD')  # 아맥스 SCHD
             SPLG = usd_search(ACCESS_TOKEN, "AMS", 'SPLG')  # 뉴욕 SPLG
 
             # 종목 환전 금액 (달러 > 원화)
-            qqqm_price = float(QQQM['last']) * dollor
             qqqy_price = float(QQQY['last']) * dollor
-            schd_price = float(SCHD['last']) * dollor
             splg_price = float(SPLG['last']) * dollor
             nvda_price = float(NVDA['last']) * dollor
 
             msg = f"환율 : {dollor}" \
-                  f"\n엔비디아 : {format(round(nvda_price, 2),',')} 원(${format(round(float(NVDA['last']), 2),',')})" \
-                  f"\nQQQM : {format(round(qqqm_price, 2),',')} 원(${format(round(float(QQQM['last']), 2),',')})" \
+                  f"\nNVDA : {format(round(nvda_price, 2),',')} 원(${format(round(float(NVDA['last']), 2),',')})" \
                   f"\nQQQY : {format(round(qqqy_price, 2),',')} 원(${format(round(float(QQQY['last']), 2),',')})" \
-                  f"\nSCHD : {format(round(schd_price, 2),',')} 원(${format(round(float(SCHD['last']), 2),',')})" \
                   f"\nSPLG : {format(round(splg_price, 2),',')} 원(${format(round(float(SPLG['last']), 2),',')})"
-
-            # SPLG 구매
-            if splg_price <= 100000:
-                price = round(float(SPLG['last']), 2)
-                result = trade(ACCESS_TOKEN, 'AMEX', 'SPLG', str(price))
-                msg = msg + f'\n[{time}] SPLG 구매({result["msg1"]})'
-            # QQQY 구매
-            if qqqy_price <= 21000:
-                price = round(float(QQQY['last']), 2)
-                result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
-                msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
 
             # 현재 해외 잔고
             info_result = info(ACCESS_TOKEN, "NASD")
+            info_dic = {}
             msg = msg + "\n★★★수익률★★★"
             for info_data in info_result:
+                info_dic[info_data['ovrs_pdno']] = info_data['ord_psbl_qty']
                 msg = msg + f"\n{info_data['ovrs_pdno']}({info_data['ord_psbl_qty']}) : {info_data['evlu_pfls_rt']}%"
+
+            if int(info_dic['NVDA']) < (int(info_dic['QQQY'])+int(info_dic['SPLG'])):
+                #NVDA 구매
+                price = round(float(NVDA['last']), 2)
+                result = trade(ACCESS_TOKEN, 'NAS', 'NVDA', str(price))
+                msg = msg + f'\n[{time}] NVDA 구매({result["msg1"]})'
+            elif int(info_dic['QQQY']) > int(info_dic['SPLG']):
+                # SPLG 구매
+                if splg_price <= 100000:
+                    price = round(float(SPLG['last']), 2)
+                    result = trade(ACCESS_TOKEN, 'AMEX', 'SPLG', str(price))
+                    msg = msg + f'\n[{time}] SPLG 구매({result["msg1"]})'
+            else:
+                # QQQY 구매
+                if qqqy_price <= 21000:
+                    price = round(float(QQQY['last']), 2)
+                    result = trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
+                    msg = msg + f'\n[{time}] QQQY 구매({result["msg1"]})'
 
             print(msg)
             # 카카오 메신저 발송
