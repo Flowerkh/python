@@ -69,8 +69,8 @@ def main():
 
             print(msg)
             # 카카오 메신저 발송
-            if datetime.now().strftime('%H:%M') >= "04:10":
-                send.kakao(msg)
+            #if datetime.now().strftime('%H:%M') >= "04:10":
+            send.kakao(msg)
 
         except Exception as e:
             print(f'Error [%s]' % (str(e)))
