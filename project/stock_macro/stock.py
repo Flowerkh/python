@@ -14,7 +14,7 @@ AMS : 아멕스
 NAS : 나스닥
 """
 def main():
-    time = datetime.today().strftime("%H:%M:%S")
+    time = datetime.today().strftime("%H:%M")
 
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
