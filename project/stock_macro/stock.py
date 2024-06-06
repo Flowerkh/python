@@ -55,7 +55,7 @@ def main():
             if int(info_dic['NVDA']) < (int(info_dic['QQQY'])+int(info_dic['SPLG']))*2:
                 #NVDA 구매
                 price = round(float(NVDA['last']), 2)
-                result = trade(ACCESS_TOKEN, 'NAS', 'NVDA', str(price))
+                result = trade(ACCESS_TOKEN, 'NASD', 'NVDA', str(price))
                 msg = msg + f'\n[{time}] NVDA 구매({result["msg1"]})'
             elif int(info_dic['QQQY']) > int(info_dic['SPLG']):
                 # SPLG 구매
