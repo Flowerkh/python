@@ -15,10 +15,10 @@ NYS : 뉴욕
 AMS : 아멕스
 NAS : 나스닥
 """
-def main(fin):
+def main():
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
-    dollor = fin
+    dollor = 1390
 
     try:
         line = f.readline()
@@ -125,4 +125,4 @@ if __name__ == '__main__':
     else:
         USD = 1390
 
-    main(USD)
+    main()
