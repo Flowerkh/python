@@ -6,6 +6,9 @@ import requests
 import json
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/var/project/python/kakao'))))
 from kakao import send
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 """
 NYS : 뉴욕
