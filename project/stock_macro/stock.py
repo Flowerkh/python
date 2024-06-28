@@ -113,7 +113,7 @@ if __name__ == '__main__':
     key = "EMJld60MM2JVYvmBkwGSp1fDe1HEIDrg"
     url = f"http://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey={key}&searchdate=20240627&data=AP01"
 
-    result = requests.get(url)
+    result = requests.get(url, verify=False)
     if result.status_code == 200:
         json_data = json.loads(result.text)
         for jd in json_data:
