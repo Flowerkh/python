@@ -22,6 +22,7 @@ response = weather(61,126) #서울
 
 if response.status_code == 200:
     res = json.loads(response.text)
+    print(res['response']['body']['items']['item'])
     try:
         # category : TMP : 온도, SKY : 하늘 상태, PCP : 강수량, PTY: 강수형태, REH:습도
         sky_code = {'1': '맑음', '3': '구름많음', '4': '흐림'}
@@ -46,7 +47,7 @@ if response.status_code == 200:
         exit()
     else:
         PCP_am = "(0mm)" if informations['0600']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
-        PCP_pm = "(0mm)" if informations['1400']['PCP'] == '강수없음' else " ("+informations['0600']['PCP']+"mm)"
+        PCP_pm = "(0mm)" if informations['1400']['PCP'] == '강수없음' else " ("+informations['1400']['PCP']+"mm)"
 
         msg = f"오늘의 날씨 (오전/오후)" \
               f"\n구름 : {sky_code[informations['0600']['SKY']]} / {sky_code[informations['1400']['SKY']]}" \
@@ -54,7 +55,7 @@ if response.status_code == 200:
               f"\n습도 : {informations['0600']['REH']}% / {informations['1400']['REH']}%" \
               f"\n강수 : {informations['0600']['POP']}%{PCP_am} / {informations['1400']['POP']}%{PCP_pm}"\
               f"\n풍속 : {informations['0600']['WSD']} ㎧ / {informations['1400']['WSD']} ㎧"
-        #print(msg)
-        send.kakao(msg)
+        print(msg)
+        #send.kakao(msg)
 else:
     print('통신 오류')
