@@ -22,7 +22,6 @@ response = weather(61,126) #서울
 
 if response.status_code == 200:
     res = json.loads(response.text)
-    print(res['response']['body']['items']['item'])
     try:
         # category : TMP : 온도, SKY : 하늘 상태, PCP : 강수량, PTY: 강수형태, REH:습도
         sky_code = {'1': '맑음', '3': '구름많음', '4': '흐림'}
@@ -55,7 +54,7 @@ if response.status_code == 200:
               f"\n습도 : {informations['0600']['REH']}% / {informations['1400']['REH']}%" \
               f"\n강수 : {informations['0600']['POP']}%{PCP_am} / {informations['1400']['POP']}%{PCP_pm}"\
               f"\n풍속 : {informations['0600']['WSD']} ㎧ / {informations['1400']['WSD']} ㎧"
-        print(msg)
-        #send.kakao(msg)
+        #print(msg)
+        send.kakao(msg)
 else:
     print('통신 오류')
