@@ -47,23 +47,10 @@ def main():
             info_dic[info_data['ovrs_pdno']] = info_data['ord_psbl_qty']
             msg = msg + f"\n{info_data['ovrs_pdno']}({info_data['ord_psbl_qty']}) : {info_data['evlu_pfls_rt']}%"
 
-        # if int(info_dic['NVDA']) < (int(info_dic['QQQY'])+int(info_dic['SPLG']))*2:
-        #     #NVDA 구매
-        #     price = round(float(NVDA['last']), 2)
-        #     result = trade(ACCESS_TOKEN, 'NASD', 'NVDA', str(price))
-        # el
         # SPLG 구매
         if splg_price <= 100000:
             price = round(float(SPLG['last']), 2)
             trade(ACCESS_TOKEN, 'AMEX', 'SPLG', str(price))
-        # if int(info_dic['QQQY']) > int(info_dic['SPLG']):
-        #
-        #
-        # else:
-        #     # QQQY 구매
-        #     if qqqy_price <= 21000:
-        #         price = round(float(QQQY['last']), 2)
-        #         trade(ACCESS_TOKEN, 'NASD', 'QQQY', str(price))
 
         print(msg)
         # 카카오 메신저 발송
