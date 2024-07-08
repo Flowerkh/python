@@ -1,7 +1,7 @@
 import requests
 import json
 
-url = f"https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=EMJld60MM2JVYvmBkwGSp1fDe1HEIDrg&searchdate=20240708&data=AP01"
+url = f"http://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=EMJld60MM2JVYvmBkwGSp1fDe1HEIDrg&searchdate=20240708&data=AP01"
 result = requests.get(url)
 if result.status_code == 200:
     json_data = json.loads(result.text)
