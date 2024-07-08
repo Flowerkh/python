@@ -25,19 +25,22 @@ def main():
         ACCESS_TOKEN = line
 
         # 종목 금액 조회
-        QQQY = usd_search(ACCESS_TOKEN, "NAS", 'QQQY')  # 나스닥 QQQY
         NVDA = usd_search(ACCESS_TOKEN, "NAS", 'NVDA')  # 나스닥 엔비디아
-        SPLG = usd_search(ACCESS_TOKEN, "AMS", 'SPLG')  # 뉴욕 SPLG
+        QQQY = usd_search(ACCESS_TOKEN, "NAS", 'QQQY')  # 나스닥 QQQY
+        SPLG = usd_search(ACCESS_TOKEN, "AMS", 'SPLG')  # 아맥스 SPLG
+        NVDY = usd_search(ACCESS_TOKEN, "AMS", 'NVDY')  # 아맥스 NVDY
 
         # 종목 환전 금액 (달러 > 원화)
+        nvda_price = float(NVDA['last']) * dollor
         qqqy_price = float(QQQY['last']) * dollor
         splg_price = float(SPLG['last']) * dollor
-        nvda_price = float(NVDA['last']) * dollor
+        nvdy_price = float(NVDY['last']) * dollor
 
         msg = f"환율 : {dollor}" \
               f"\nNVDA : {format(round(nvda_price, 2), ',')} 원(${format(round(float(NVDA['last']), 2), ',')})" \
               f"\nQQQY : {format(round(qqqy_price, 2), ',')} 원(${format(round(float(QQQY['last']), 2), ',')})" \
-              f"\nSPLG : {format(round(splg_price, 2), ',')} 원(${format(round(float(SPLG['last']), 2), ',')})"
+              f"\nSPLG : {format(round(splg_price, 2), ',')} 원(${format(round(float(SPLG['last']), 2), ',')})" \
+              f"\nNVDY : {format(round(nvdy_price, 2), ',')} 원(${format(round(float(NVDY['last']), 2), ',')})"
 
         # 현재 해외 잔고
         info_result = info(ACCESS_TOKEN, "NASD")
@@ -45,7 +48,7 @@ def main():
         msg = msg + "\n★★★수익률★★★"
         for info_data in info_result:
             info_dic[info_data['ovrs_pdno']] = info_data['ord_psbl_qty']
-            msg = msg + f"\n{info_data['ovrs_pdno']}({info_data['ord_psbl_qty']}) : {info_data['evlu_pfls_rt']}%"
+            msg = msg + f"\n{info_data['ovrs_pdno']}({info_data['ord_psbl_qty']}) : $ {round(float(info_data['ovrs_stck_evlu_amt']),2)} ({info_data['evlu_pfls_rt']}%)"
 
         # SPLG 구매
         if splg_price <= 100000:
@@ -55,7 +58,7 @@ def main():
         print(msg)
         # 카카오 메신저 발송
         # if datetime.now().strftime('%H:%M') >= "04:10":
-        send.kakao(msg)
+        #send.kakao(msg)
 
     except Exception as e:
         print(f'Error [%s]' % (str(e)))
