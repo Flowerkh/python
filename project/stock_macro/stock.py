@@ -15,10 +15,10 @@ NYS : 뉴욕
 AMS : 아멕스
 NAS : 나스닥
 """
-def main():
+def main(dollor):
     f = open("/var/project/python/project/stock_macro/token.txt", 'r', encoding='utf-8')
     #f = open("./token.txt", 'r', encoding='utf-8')
-    dollor = 1390
+    dollor = float(dollor)
 
     try:
         line = f.readline()
@@ -105,16 +105,16 @@ def info(token,kind):
     return for_trade.my_info(token, kind)
 
 if __name__ == '__main__':
-    # key = "EMJld60MM2JVYvmBkwGSp1fDe1HEIDrg"
-    # url = f"http://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey={key}&searchdate=20240627&data=AP01"
-    #
-    # result = requests.get(url, verify=False)
-    # if result.status_code == 200:
-    #     json_data = json.loads(result.text)
-    #     for jd in json_data:
-    #         if jd['cur_unit'] == 'USD':
-    #             USD = float(jd['deal_bas_r'].replace(',',''))
-    # else:
-    #     USD = 1390
+    key = "EMJld60MM2JVYvmBkwGSp1fDe1HEIDrg"
+    url = f"http://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey={key}&searchdate=20240627&data=AP01"
 
-    main()
+    result = requests.get(url, verify=False)
+    if result.status_code == 200:
+        json_data = json.loads(result.text)
+        for jd in json_data:
+            if jd['cur_unit'] == 'USD':
+                USD = float(jd['deal_bas_r'].replace(',',''))
+    else:
+        USD = 1390
+
+    main(USD)
