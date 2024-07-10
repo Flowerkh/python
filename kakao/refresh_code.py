@@ -5,7 +5,7 @@ url = "https://kauth.kakao.com/oauth/token"
 data = {
     "grant_type": "refresh_token",
     "client_id": "6e8d6ccad42455b8a2c0979d6c005940",
-    "refresh_token": "qo0HuR0guozDUXmMB51-h1i2fjiBtB-dAAAAAgoqJU4AAAGQR1jEjZIGkKnmukNu"
+    "refresh_token": "CV-Kv5SJnthICmVl--HDZxrV0PaRXq7wAAAAAgo9dGgAAAGQnu6jIpIGkKnmukNu"
 }
 response = requests.post(url, data=data)
 
