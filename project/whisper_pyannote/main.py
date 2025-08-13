@@ -143,26 +143,24 @@ def save_srt(segments: List[Dict[str, Any]], audio_path: Path) -> Path:
 
 
 def main():
+    #환경변수 세팅
     OPENAI_API_KEY = require_env("OPENAI_API_KEY")
     HF_TOKEN = require_env("HF_TOKEN")
 
-    # 1) 전사 (세그먼트 dict 정규화)
+    #세그먼트 dict 정규화
     segments = transcribe_with_whisper(OPENAI_API_KEY, AUDIO_FILE)
 
-    # 2) 파이프라인 로드 (MODEL_ID + cache_dir)
+    #파이프라인 로드 (MODEL_ID + cache_dir) & 매칭
     diar_pipe = load_diarization_pipeline(HF_TOKEN)
-
-    # 3) 매칭
     speakered = match_speakers(segments, diar_pipe)
 
-    # 4) 출력
     print("\n📄 화자별 대화 스크립트\n" + "-" * 40)
     for seg in speakered:
         print(f"{seg['speaker']}: {seg['text']}")
     print("-" * 40)
     print("✅ 작업 완료")
 
-    # 5) (옵션) SRT 저장
+    #SRT 저장
     if SAVE_SRT:
         srt = save_srt(speakered, AUDIO_FILE)
         print(f"💾 SRT 저장: {srt}")
