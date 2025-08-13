@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Windows 11 + Python 3.11 + PyCharm
 Whisper API (whisper-1) + pyannote.audio (speaker-diarization-3.1)
@@ -17,19 +16,17 @@ from openai import OpenAI
 from pyannote.audio import Pipeline as PnPipeline
 
 # ===== 사용자 설정 =====
-AUDIO_FILE = Path(r"C:/Users/cdffe/Desktop/vpn/회의녹음.mp3") # 분석할 오디오 파일 경로
+AUDIO_FILE = Path(r"C:/Users/cdffe/Desktop/vpn/회의녹음.mp3")
 SAVE_SRT = True
-MODEL_ID = "pyannote/speaker-diarization-3.1" # 모델 아이디 (경로 금지)
-CACHE_DIR = Path.home() / ".cache" / "hf_diarization_cache" # 다운로드 캐시 위치
+MODEL_ID = "pyannote/speaker-diarization-3.1"
+CACHE_DIR = Path.home()/".cache"/"hf_diarization_cache" # 다운로드 캐시 위치
 # ======================
-
 
 def require_env(name: str) -> str:
     v = os.getenv(name)
     if not v:
-        raise ValueError(f"❌ {name} 환경변수가 없습니다. PyCharm → Run/Debug Config → Environment variables에 추가하세요.")
+        raise ValueError(f"{name} 환경변수가 없습니다. PyCharm → Run/Debug Config → Environment variables에 추가하세요.")
     return v
-
 
 def sec_to_srt(ts: float) -> str:
     if ts is None:
@@ -41,7 +38,6 @@ def sec_to_srt(ts: float) -> str:
     s = int(ts)
     ms = int(round((ts - s) * 1000))
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-
 
 def overlap(a0: float, a1: float, b0: float, b1: float) -> float:
     return max(0.0, min(a1, b1) - max(a0, b0))
@@ -62,14 +58,14 @@ def _seg_to_dict(seg) -> Dict[str, Any]:
 #whisper 처리
 def transcribe_with_whisper(api_key: str, audio_path: Path) -> List[Dict[str, Any]]:
     if not audio_path.exists():
-        raise FileNotFoundError(f"❌ 파일을 찾을 수 없습니다: {audio_path}")
+        raise FileNotFoundError(f"파일을 찾을 수 없습니다: {audio_path}")
     print("🎙 Whisper API로 음성 인식 중...")
     client = OpenAI(api_key=api_key)
     with audio_path.open("rb") as f:
         tr = client.audio.transcriptions.create(
             model="whisper-1", #whipser 모델
             file=f,
-            response_format="verbose_json"  #segments 포함
+            response_format="verbose_json" #segments 포함
         )
 
     segments = getattr(tr, "segments", None)
@@ -105,15 +101,15 @@ def load_diarization_pipeline(hf_token: str):
 
     if torch.cuda.is_available():
         diar_pipe.to(torch.device("cuda"))  # 재할당 금지
-        print("💻 GPU 사용: CUDA 활성화")
+        print("GPU 사용: CUDA 활성화")
     else:
-        print("🧠 CPU mode")
+        print("CPU 사용")
     return diar_pipe
 
 
 def match_speakers(segments: List[Dict[str, Any]], diarization) -> List[Dict[str, Any]]:
     print("🗣 화자 분리 중...")
-    dia = diarization(str(AUDIO_FILE))  # pyannote는 str 경로 허용
+    dia = diarization(str(AUDIO_FILE)) #pyannote는 str 경로 허용
     turns = [(float(t.start), float(t.end), spk) for t, _, spk in dia.itertracks(yield_label=True)]
 
     out = []
@@ -154,11 +150,11 @@ def main():
     diar_pipe = load_diarization_pipeline(HF_TOKEN)
     speakered = match_speakers(segments, diar_pipe)
 
-    print("\n📄 화자별 대화 스크립트\n" + "-" * 40)
+    print("\n화자별 대화 스크립트\n" + "-" * 40)
     for seg in speakered:
         print(f"{seg['speaker']}: {seg['text']}")
     print("-" * 40)
-    print("✅ 작업 완료")
+    print("작업 완료")
 
     #SRT 저장
     if SAVE_SRT:
