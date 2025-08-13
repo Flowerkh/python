@@ -10,7 +10,6 @@ Whisper API (whisper-1) + pyannote.audio (speaker-diarization-3.1)
 """
 
 import os
-import math
 import torch
 from pathlib import Path
 from typing import List, Dict, Any
@@ -19,9 +18,9 @@ from pyannote.audio import Pipeline as PnPipeline
 
 # ===== 사용자 설정 =====
 AUDIO_FILE = Path(r"C:/Users/cdffe/Desktop/vpn/250811_테스트.mp3")  # 분석할 오디오 파일 경로
-SAVE_SRT   = True
-MODEL_ID   = "pyannote/speaker-diarization-3.1"                    # 모델 아이디 (경로 금지)
-CACHE_DIR  = Path.home() / ".cache" / "hf_diarization_cache"       # 다운로드 캐시 위치
+SAVE_SRT = True
+MODEL_ID = "pyannote/speaker-diarization-3.1"                    # 모델 아이디 (경로 금지)
+CACHE_DIR = Path.home() / ".cache" / "hf_diarization_cache"       # 다운로드 캐시 위치
 # ======================
 
 
@@ -52,12 +51,12 @@ def overlap(a0: float, a1: float, b0: float, b1: float) -> float:
 def _seg_to_dict(seg) -> Dict[str, Any]:
     if isinstance(seg, dict):
         start = seg.get("start", 0.0)
-        end   = seg.get("end", 0.0)
-        text  = seg.get("text", "")
+        end = seg.get("end", 0.0)
+        text = seg.get("text", "")
     else:
         start = getattr(seg, "start", 0.0)
-        end   = getattr(seg, "end", 0.0)
-        text  = getattr(seg, "text", "")
+        end = getattr(seg, "end", 0.0)
+        text = getattr(seg, "text", "")
     return {"start": float(start or 0.0), "end": float(end or 0.0), "text": str(text or "").strip()}
 # -------------------------------------------------------------
 
@@ -146,7 +145,7 @@ def save_srt(segments: List[Dict[str, Any]], audio_path: Path) -> Path:
 
 def main():
     OPENAI_API_KEY = require_env("OPENAI_API_KEY")
-    HF_TOKEN       = require_env("HF_TOKEN")
+    HF_TOKEN = require_env("HF_TOKEN")
 
     # 1) 전사 (세그먼트 dict 정규화)
     segments = transcribe_with_whisper(OPENAI_API_KEY, AUDIO_FILE)
