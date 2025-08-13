@@ -1,6 +1,7 @@
-from huggingface_hub import hf_hub_download
-import os
-t = os.getenv("HF_TOKEN")
-# segmentation-3.0의 아무 파일이나 받아보기 (접근되면 바로 다운로드됨)
-p = hf_hub_download("pyannote/segmentation-3.0", filename="config.yaml", token=t)
-print("OK:", p)
+import torch
+
+print("cuda available:", torch.cuda.is_available())
+print("torch cuda version:", torch.version.cuda)
+print("device count:", torch.cuda.device_count())
+if torch.cuda.is_available():
+    print("device 0:", torch.cuda.get_device_name(0))

@@ -17,10 +17,10 @@ from openai import OpenAI
 from pyannote.audio import Pipeline as PnPipeline
 
 # ===== 사용자 설정 =====
-AUDIO_FILE = Path(r"C:/Users/cdffe/Desktop/vpn/250811_테스트.mp3")  # 분석할 오디오 파일 경로
+AUDIO_FILE = Path(r"C:/Users/cdffe/Desktop/vpn/회의녹음.mp3") # 분석할 오디오 파일 경로
 SAVE_SRT = True
-MODEL_ID = "pyannote/speaker-diarization-3.1"                    # 모델 아이디 (경로 금지)
-CACHE_DIR = Path.home() / ".cache" / "hf_diarization_cache"       # 다운로드 캐시 위치
+MODEL_ID = "pyannote/speaker-diarization-3.1" # 모델 아이디 (경로 금지)
+CACHE_DIR = Path.home() / ".cache" / "hf_diarization_cache" # 다운로드 캐시 위치
 # ======================
 
 
@@ -47,7 +47,7 @@ def overlap(a0: float, a1: float, b0: float, b1: float) -> float:
     return max(0.0, min(a1, b1) - max(a0, b0))
 
 
-# ---------- 세그먼트 정규화 (객체/딕셔너리 모두 지원) ----------
+#세그먼트 정규화 (객체/딕셔너리 모두 지원)
 def _seg_to_dict(seg) -> Dict[str, Any]:
     if isinstance(seg, dict):
         start = seg.get("start", 0.0)
@@ -58,9 +58,8 @@ def _seg_to_dict(seg) -> Dict[str, Any]:
         end = getattr(seg, "end", 0.0)
         text = getattr(seg, "text", "")
     return {"start": float(start or 0.0), "end": float(end or 0.0), "text": str(text or "").strip()}
-# -------------------------------------------------------------
 
-
+#whisper 처리
 def transcribe_with_whisper(api_key: str, audio_path: Path) -> List[Dict[str, Any]]:
     if not audio_path.exists():
         raise FileNotFoundError(f"❌ 파일을 찾을 수 없습니다: {audio_path}")
@@ -68,9 +67,9 @@ def transcribe_with_whisper(api_key: str, audio_path: Path) -> List[Dict[str, An
     client = OpenAI(api_key=api_key)
     with audio_path.open("rb") as f:
         tr = client.audio.transcriptions.create(
-            model="whisper-1",
+            model="whisper-1", #whipser 모델
             file=f,
-            response_format="verbose_json"  # segments 포함
+            response_format="verbose_json"  #segments 포함
         )
 
     segments = getattr(tr, "segments", None)
