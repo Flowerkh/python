@@ -5,7 +5,7 @@ import json
 url = 'https://kauth.kakao.com/oauth/token'
 rest_api_key = '6e8d6ccad42455b8a2c0979d6c005940'
 redirect_uri = 'https://example.com/oauth'
-authorize_code = 'Aq7WQ5rC5N1ppNRm3_cVYnOvNPcaIf8bRw3n6QCrGmOfGGxAtmzJ3gAAAAQKKwzSAAABkEdYeopHueF-5ScOZw'
+authorize_code = 'GJdNeP4m4wBWGCWTmBPduIo_-nvM8SSl5vkVRGyB0eIiBwNg7paD8gAAAAQKPCKbAAABkJ7uafCSBpCp5rpDbg'
 
 data = {
     'grant_type':'authorization_code',
