@@ -4,7 +4,7 @@ from PIL import Image
 import io
 
 # 1. OpenAI 클라이언트 설정 (본인의 API 키 입력)
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="")
 
 
 def resize_image(uploaded_file, size=(300, 300)):
