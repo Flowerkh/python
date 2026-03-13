@@ -1,7 +1,7 @@
 import google.generativeai as genai
 
 # 1. API 키 설정 (보내주신 키 적용)
-API_KEY = "AIzaSyD_tRVd7KI_nmjNQskUvV477CEYlRLvdeo"
+API_KEY = ""
 genai.configure(api_key=API_KEY)
 
 # 2. 모델 설정 (Gemini 1.5 Flash 사용)
