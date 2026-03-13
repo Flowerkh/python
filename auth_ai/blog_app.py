@@ -3,10 +3,12 @@ import os
 from dotenv import load_dotenv
 from PIL import Image
 from openai import OpenAI
-#import google.generativeai as genai
+import google.generativeai as genai
 
-# 환경 변수 로드
+# 1. 환경 변수 로드
 load_dotenv()
+openai_key = os.getenv("OPENAI_API_KEY")
+gemini_key = os.getenv("GEMINI_API_KEY")
 
 
 def resize_image(uploaded_file, size=(300, 300)):
@@ -17,13 +19,13 @@ def resize_image(uploaded_file, size=(300, 300)):
 
 # 페이지 설정
 st.set_page_config(page_title="AI 블로그 포스팅기", layout="wide")
-st.title("🤖 블로그 자동화: GPT vs Gemini")
+st.title("🤖 블로그 자동화")
 
 # --- 사이드바: 모델 및 설정 ---
 with st.sidebar:
     st.header("⚙️ 모델 설정")
     # 모델 선택 메뉴
-    model_choice = st.radio("사용할 AI 모델 선택", ["OpenAI GPT-4o", "Google Gemini 1.5 Pro"])
+    model_choice = st.radio("사용할 AI 모델 선택", ["OpenAI", "Google Gemini"])
 
     st.divider()
     st.header("📌 기본 정보")
@@ -31,11 +33,20 @@ with st.sidebar:
     user_idea = st.text_area("글감 입력", placeholder="예: 강남역 데이트 맛집 후기")
 
 # --- API 클라이언트 초기화 ---
-if model_choice == "OpenAI GPT-4o":
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-# elif model_choice == "Google Gemini 1.5 Pro":
-#     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-#     gemini_model = genai.GenerativeModel('gemini-1.5-pro')
+client = None
+gemini_model = None
+
+if model_choice == "OpenAI":
+    if openai_key:
+        client = OpenAI(api_key=openai_key)
+    else:
+        st.error("OpenAI API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
+elif model_choice == "Google Gemini":
+    if gemini_key:
+        genai.configure(api_key=gemini_key)
+        gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+    else:
+        st.error("Gemini API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
 
 # --- Step 1: 이미지 업로드 ---
 st.header("🖼️ 이미지 업로드")
@@ -48,52 +59,69 @@ if uploaded_files:
     for idx, file in enumerate(uploaded_files):
         with cols[idx % 3]:
             thumb = resize_image(file)
-            st.image(thumb, use_column_width=True)
-            tag_data[file.name] = st.selectbox(f"분류 {idx + 1}", tag_options, key=f"tag_{idx}")
+            # 최신 문법인 use_container_width 사용
+            st.image(thumb, use_container_width=True)
+            tag_data[file.name] = st.selectbox(f"분류 {idx + 1} ({file.name})", tag_options, key=f"tag_{idx}")
 
-# --- Step 2: 제목 및 본문 생성 ---
+# --- Step 2: 제목 생성 및 선택 ---
 if user_idea and uploaded_files:
     st.divider()
+    st.header("✍️ Step 2: 제목 추천받기")
 
-    # 1. 제목 생성 로직
-    if st.button(f"✨ {model_choice}로 제목/본문 생성"):
-        with st.spinner(f"{model_choice}가 글을 쓰고 있습니다..."):
+    if st.button(f"🔎 {model_choice}로 제목 10개 추천받기"):
+        with st.spinner("매력적인 제목을 생각 중입니다..."):
+            title_prompt = f"주제 '{user_idea}'와 카테고리 '{category}'에 어울리는 블로그 제목 10개를 추천해줘. 클릭을 부르는 매력적인 문구여야 하며, 번호만 매겨서 나열해줘."
 
-            img_info = "\n".join([f"- {name}: {tag}" for name, tag in tag_data.items()])
-            prompt = f"""
-            제목과 본문을 작성해줘.
-            주제: {user_idea} (카테고리: {category})
-            이미지 리스트: {img_info}
+            response = gemini_model.generate_content(title_prompt)
+            titles = response.text.split('\n')
 
-            [조건]
-            1. 분량: 1,500자이상 상세한 본문.
-            2. 고정 인사말 : 방하! 오늘은 ~~~ 
-            3. 이미지 배치: 본문 중간중간 [IMAGE_파일명_태그]를 삽입할 것.
-            4. 말투: 친근한 블로그 어투 (~해요, ~했답니다).
-            5. 이모지 사용: 문장 사이에 적절한 이모지를 풍부하게 넣어줘.
-            6. 고정 클로징 : 함바! ~~~
+            # 숫자와 공백 제거 후 리스트 저장
+            st.session_state.suggested_titles = [t.strip() for t in titles if t.strip()]
 
-            [해시태그 추가 요청]
-            - 본문 맨 마지막에 해당 주제와 관련된 해시태그 20개를 생성해줘.
-            - 형식은 #태그명 형태이며, 띄어쓰기 없이 나열해줘.
-            - 맛집/여행지 이름, 지역구, 메뉴명, 분위기(데이트, 주말나들이 등), 블로그 소통 태그를 골고루 섞어줘.
-            """
+    # 제목 리스트가 생성되었다면 선택창 보여주기
+    if 'suggested_titles' in st.session_state:
+        selected_title = st.selectbox("마음에 드는 제목을 골라주세요", st.session_state.suggested_titles)
 
-            # 모델별 호출 방식 분기
-            if model_choice == "OpenAI GPT-4o":
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                final_text = response.choices[0].message.content
-            else:
-                response = gemini_model.generate_content(prompt)
-                final_text = response.text
+        # --- Step 3: 본문 생성 ---
+        st.header("📝 Step 3: 본문 생성")
+        if st.button(f"🚀 '{selected_title}' 제목으로 글쓰기"):
+            if (model_choice == "OpenAI" and client) or (
+                    model_choice == "Google Gemini" and gemini_model):
+                with st.spinner("본문을 작성 중입니다..."):
+                    img_info = "\n".join([f"- {name}: {tag}" for name, tag in tag_data.items()])
 
-            st.session_state.final_blog = final_text
+                    # 본문 프롬프트에 선택한 제목 반영
+                    prompt = f"""
+                    블로그 본문을 작성해줘.
+                    선택된 제목: {selected_title}
+                    주제: {user_idea} (카테고리: {category})
+                    이미지 리스트: {img_info}
 
-    # 결과 출력
+                    [조건]
+                    1. 제목은 반드시 '{selected_title}'를 사용할 것.
+                    2. 분량: 1,500자 이상 상세한 본문.
+                    3. 고정 인사말 : 방하! 오늘은 ~~~ 
+                    4. 이미지 배치: 본문 중간중간 [IMAGE_파일명_태그]를 삽입할 것.
+                    5. 말투: 친근한 블로그 어투 (~해요, ~했답니다).
+                    6. 이모지 사용: 문장 사이에 적절한 이모지를 풍부하게 넣어줘.
+                    7. 고정 클로징 : 함바! ~~~
+                    8. 마지막에 관련 해시태그 20개를 #태그명 형태로 나열해줘.
+                    """
+
+                    if model_choice == "OpenAI":
+                        response = client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        final_text = response.choices[0].message.content
+                    else:
+                        response = gemini_model.generate_content(prompt)
+                        final_text = response.text
+
+                    st.session_state.final_blog = final_text
+
+    # 결과 출력 (동일)
     if 'final_blog' in st.session_state:
-        st.subheader("✅ 생성 결과")
+        st.subheader("✅ 최종 완성본")
         st.text_area("결과 복사", st.session_state.final_blog, height=600)
         st.download_button("텍스트 파일 저장", st.session_state.final_blog, file_name="ai_blog_post.txt")

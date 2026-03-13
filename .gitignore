@@ -1,4 +1,19 @@
 #제외 대상
+.env             # 보안 필수
+venv/            # 가상환경 (용량이 크고 각자 설치하면 됨)
+__pycache__/     # 파이썬 실행 시 생기는 찌꺼기 파일
+.vscode/         # 에디터 설정
+.idea/           # 파이참 설정
+
+# --- 파이썬 빌드 및 패키지 관련 ---
+dist/                # PyInstaller로 만든 .exe 파일이 들어가는 곳
+build/               # 빌드 과정에서 생기는 임시 폴더
+*.spec               # PyInstaller 설정 파일
+__pycache__/         # 파이썬 실행 시 생성되는 컴파일 파일
+*.pyc                # 파이썬 컴파일 결과물
+venv/                # 가상환경 폴더 (가장 용량이 큼)
+.ipynb_checkpoints/  # 주피터 노트북 임시 파일
+
 discord/**/*.txt
 discord/**/*.log
 discord/**/*.json

@@ -5,8 +5,13 @@
 ## 1. 환경 준비 (Environment Setup)
 
 ### 필수 라이브러리 설치
-PyCharm 터미널에서 아래 명령어를 실행하여 필요한 패키지를 설치합니다.
-
 ```bash
 python -m pip install -U streamlit google-generativeai python-dotenv Pillow
 python -m streamlit run blog_app.py
+```
+
+### 실행용 진입점 파일
+run_app.py
+
+### 제미나이 API 사용 버전 확인
+https://generativelanguage.googleapis.com/v1/models?key={API_KEY}
