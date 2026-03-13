@@ -6,10 +6,10 @@ from openai import OpenAI
 import google.generativeai as genai
 
 # 1. 환경 변수 로드
+# streamlit run blog_app.py
 load_dotenv()
 openai_key = os.getenv("OPENAI_API_KEY")
 gemini_key = os.getenv("GEMINI_API_KEY")
-
 
 def resize_image(uploaded_file, size=(300, 300)):
     image = Image.open(uploaded_file)
@@ -100,7 +100,7 @@ if user_idea and uploaded_files:
                     [조건]
                     1. 제목은 반드시 '{selected_title}'를 사용할 것.
                     2. 분량: 1,500자 이상 상세한 본문.
-                    3. 고정 인사말 : 방하! 오늘은 ~~~ 
+                    3. 고정 인사말 : 함하! 오늘은 ~~~ 
                     4. 이미지 배치: 본문 중간중간 [IMAGE_파일명_태그]를 삽입할 것.
                     5. 말투: 친근한 블로그 어투 (~해요, ~했답니다).
                     6. 이모지 사용: 문장 사이에 적절한 이모지를 풍부하게 넣어줘.
