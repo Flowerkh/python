@@ -6,53 +6,40 @@ from dotenv import load_dotenv
 from google import genai
 from instagrapi import Client
 from PIL import Image
+import tempfile
 
 # --- 1. 설정 로드 ---
 current_dir = Path(__file__).resolve().parent
 env_path = current_dir.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-# .env에서 정보 가져오기
 USERNAME = os.getenv("INSTA_USERNAME")
 PASSWORD = os.getenv("INSTA_PASSWORD")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-
-# --- 2. 이미지 가공 함수 (성공하신 코드의 경로 처리를 위해 유지) ---
-def process_insta_image(input_file, output_path):
-    with Image.open(input_file) as img:
-        img = img.convert("RGB")
-        # 인스타그램 권장 사이즈
-        img.thumbnail((1080, 1080), Image.Resampling.LANCZOS)
-        new_img = Image.new("RGB", (1080, 1080), (255, 255, 255))
-        offset = ((1080 - img.size[0]) // 2, (1080 - img.size[1]) // 2)
-        new_img.paste(img, offset)
-        # 메타데이터 제거 및 최적화 저장
-        new_img.save(output_path, "JPEG", quality=90, optimize=True)
-
-
-# --- 3. Streamlit UI ---
-st.set_page_config(page_title="인스타 업로더", page_icon="📸")
-st.title("📸 인스타 업로더")
+# --- 2. Streamlit UI ---
+st.set_page_config(page_title="인스타 릴스 업로더", page_icon="🎬")
+st.title("🎬 인스타 릴스 업로더")
 
 if "generated_caption" not in st.session_state:
     st.session_state.generated_caption = ""
 
-# 사진 한 장만 받도록 설정
-uploaded_file = st.file_uploader("업로드할 사진을 선택하세요", type=["jpg", "jpeg", "png"])
-user_topic = st.text_input("게시글 주제 (예: 주말 나들이)")
+# 비디오 파일을 받도록 수정 (mp4, mov 등)
+uploaded_video = st.file_uploader("업로드할 릴스 영상을 선택하세요", type=["mp4", "mov", "avi"])
+user_topic = st.text_input("게시글 주제 (예: 12지신 애니메이션)")
 
-# --- 4. Gemini 본문 생성 ---
+# --- 3. Gemini 본문 생성 ---
 if st.button("📝 AI 본문 생성"):
-    if uploaded_file and user_topic:
-        with st.spinner("AI가 글을 쓰고 있습니다..."):
+    if uploaded_video and user_topic:
+        with st.spinner("AI가 영상을 분석하고 글을 쓰고 있습니다..."):
             try:
-                img_for_ai = Image.open(uploaded_file)
-                prompt =  f"""
-                이 이미지들과 '{user_topic}' 주제로 만으로 인스타그램 게시글 본문을 작성해줘.
-                
+                # 영상 파일의 경우 첫 프레임을 추출하거나 주제만으로 생성할 수 있습니다.
+                # 여기서는 주제를 중심으로 본문을 작성하도록 설정했습니다.
+                prompt = f"""
+                '{user_topic}' 주제의 인스타그램 릴스 게시글 본문을 작성해줘.
+
                 [조건]
                 1. 분량 : 250자 미만
                 2. 해시태그 8~10개를 번호 없이 이어서 써줘
@@ -61,41 +48,43 @@ if st.button("📝 AI 본문 생성"):
                 """
                 response = client.models.generate_content(
                     model="gemini-flash-latest",
-                    contents=[prompt, img_for_ai]
+                    contents=[prompt]
                 )
                 st.session_state.generated_caption = response.text
             except Exception as e:
                 st.error(f"본문 생성 실패: {e}")
 
-# --- 5. 최종 업로드 로직 (성공한 코드 로직 반영) ---
+# --- 4. 릴스 업로드 로직 ---
 if st.session_state.generated_caption:
     caption = st.text_area("내용 수정", value=st.session_state.generated_caption, height=150)
 
-    if st.button("🚀 인스타그램에 업로드"):
-        with st.spinner("업로드 중..."):
+    if st.button("🚀 릴스 업로드"):
+        with st.spinner("릴스 업로드 중..."):
             cl = Client()
-            temp_path = str(current_dir / "upload_ready.jpg")
+
+            # 임시 파일 경로 생성
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
+                tmp.write(uploaded_video.read())
+                video_path = tmp.name
 
             try:
-                # 1. 이미지 가공
-                process_insta_image(uploaded_file, temp_path)
-
-                # 2. 로그인 (성공하신 방식 그대로)
+                # 로그인
                 cl.login(USERNAME, PASSWORD)
                 st.sidebar.write(f"로그인 성공! ID: {cl.user_id}")
 
-                # 3. 약간의 대기 (보안 방지)
-                time.sleep(2)
+                # 보안을 위한 대기
+                time.sleep(3)
 
-                # 4. 업로드 실행
-                cl.photo_upload(temp_path, caption)
+                # 릴스 업로드 (clip_upload 사용)
+                # 영상 파일과 캡션만 넣으면 자동으로 릴스로 업로드됩니다.
+                cl.clip_upload(video_path, caption)
 
-                st.success("✅ 업로드에 성공했습니다!")
+                st.success("✅ 릴스 업로드에 성공했습니다!")
                 st.balloons()
 
             except Exception as e:
                 st.error(f"업로드 에러 발생: {e}")
             finally:
-                # 임시 파일 삭제
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
+                # 임시 비디오 파일 삭제
+                if os.path.exists(video_path):
+                    os.remove(video_path)
