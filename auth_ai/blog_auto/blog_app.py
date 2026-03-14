@@ -4,10 +4,14 @@ from dotenv import load_dotenv
 from PIL import Image
 from openai import OpenAI
 import google.generativeai as genai
+from pathlib import Path
 
 # 1. 환경 변수 로드
 # streamlit run blog_app.py
-load_dotenv()
+current_dir = Path(__file__).resolve().parent
+env_path = current_dir.parent / '.env'
+
+load_dotenv(dotenv_path=env_path)
 openai_key = os.getenv("OPENAI_API_KEY")
 gemini_key = os.getenv("GEMINI_API_KEY")
 
@@ -44,7 +48,7 @@ if model_choice == "OpenAI":
 elif model_choice == "Google Gemini":
     if gemini_key:
         genai.configure(api_key=gemini_key)
-        gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+        gemini_model = genai.GenerativeModel('gemini-flash-latest')
     else:
         st.error("Gemini API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
 

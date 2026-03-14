@@ -1,7 +1,7 @@
 # 모든 폴더의 .env 무시
-**/.env
+auth_ai/.env
 .env
-*/.env
+auth_ai/.env
 auth_ai/.env
 
 venv/            # 가상환경 (용량이 크고 각자 설치하면 됨)
