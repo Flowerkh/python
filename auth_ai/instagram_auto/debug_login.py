@@ -2,8 +2,8 @@ import time
 from instagrapi import Client
 
 cl = Client()
-USERNAME = "cdffee1@naver.com"
-PASSWORD = "qbxlrudgk1@"
+USERNAME = "instagram_id"
+PASSWORD = "instagram_pw"
 
 try:
     cl.login(USERNAME, PASSWORD)
