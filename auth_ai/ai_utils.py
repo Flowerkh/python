@@ -35,7 +35,7 @@ def get_ai_client(model_choice):
     elif model_choice == "Google Gemini":
         if keys["gemini"]:
             genai.configure(api_key=keys["gemini"])
-            model = genai.GenerativeModel('gemini-1.5-flash')  # 최신 모델명 권장
+            model = genai.GenerativeModel('gemini-flash-latest')  # 최신 모델명 권장
             return model, None
         else:
             return None, "Gemini API 키가 없습니다."

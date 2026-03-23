@@ -1,18 +1,15 @@
 import streamlit as st
 from PIL import Image
-from pathlib import Path
 import sys
+from pathlib import Path
 
-# 1. 공용 모듈 경로 추가 (ai_utils.py를 찾기 위함)
-# blog_app.py가 하위 폴더에 있다면 상위 폴더를 경로에 추가해야 합니다.
-current_file = Path(__file__).resolve()
-auth_ai_dir = current_file.parent.parent  # auth_ai 폴더 경로
-if str(auth_ai_dir) not in sys.path:
-    sys.path.append(str(auth_ai_dir))
+# 1. 현재 파일(blog_app.py)의 부모의 부모 폴더(auth_ai) 경로를 계산합니다.
+# .parent는 blog_auto, .parent.parent는 auth_ai 폴더가 됩니다.
+root_dir = Path(__file__).resolve().parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.append(str(root_dir))
 
-# 공용 모듈에서 AI 클라이언트 가져오기
-from python.auth_ai.ai_utils import get_ai_client
-
+from ai_utils import get_ai_client
 
 def resize_image(uploaded_file, size=(300, 300)):
     image = Image.open(uploaded_file)
