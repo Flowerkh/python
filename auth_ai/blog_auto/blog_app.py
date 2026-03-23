@@ -11,7 +11,7 @@ if str(auth_ai_dir) not in sys.path:
     sys.path.append(str(auth_ai_dir))
 
 # 공용 모듈에서 AI 클라이언트 가져오기
-from ai_utils import get_ai_client
+from python.auth_ai.ai_utils import get_ai_client
 
 
 def resize_image(uploaded_file, size=(300, 300)):
