@@ -31,8 +31,18 @@ with st.sidebar:
 
     st.divider()
     st.header("📌 기본 정보")
-    category = st.selectbox("카테고리", ["맛집", "여행", "일상", "리뷰"])
+    category = st.selectbox("카테고리", ["맛집", "여행", "일상", "IT/리뷰"])
     user_idea = st.text_area("글감 입력", placeholder="예: 강남역 데이트 맛집 후기")
+
+category_tags = {
+    "맛집": ["선택안함", "외관/간판", "실내/인테리어", "메뉴판", "메인음식", "상세컷(음식)", "영수증/지도"],
+    "여행": ["선택안함", "풍경/전경", "숙소/실내", "이동수단(비행기/기차)", "티켓/안내판", "활동(액티비티)", "현지음식"],
+    "일상": ["선택안함", "오늘의무드", "소품/구매템", "셀카/인물", "풍경", "반려동물/식물", "기타"],
+    "IT/리뷰": ["선택안함", "제품박스", "제품외관", "상세디테일", "실제사용기", "설정화면/UI", "비교샷"]
+}
+
+# 현재 선택된 카테고리에 맞는 태그 리스트 가져오기 (기본값은 일상)
+tag_options = category_tags.get(category, category_tags["일상"])
 
 # --- API 클라이언트 초기화 (공용 모듈 사용) ---
 # ai_utils.py에서 클라이언트를 가져옵니다.
@@ -56,12 +66,16 @@ uploaded_files = st.file_uploader("사진을 올려주세요", accept_multiple_f
 tag_data = {}
 if uploaded_files:
     cols = st.columns(3)
-    tag_options = ["선택안함", "외관", "실내", "메뉴판", "메인음식", "상세컷"]
     for idx, file in enumerate(uploaded_files):
         with cols[idx % 3]:
             thumb = resize_image(file)
             st.image(thumb, use_container_width=True)
-            tag_data[file.name] = st.selectbox(f"분류 {idx + 1} ({file.name})", tag_options, key=f"tag_{idx}")
+            # 위에서 설정한 tag_options가 여기서 사용됩니다.
+            tag_data[file.name] = st.selectbox(
+                f"분류 {idx + 1}",
+                tag_options,
+                key=f"tag_{idx}"
+            )
 
 # --- Step 2: 제목 생성 및 선택 ---
 if user_idea and uploaded_files:
@@ -101,6 +115,7 @@ if user_idea and uploaded_files:
                 img_info = "\n".join([f"- {name}: {tag}" for name, tag in tag_data.items()])
                 prompt = f"""
                 블로그 본문을 작성해줘.
+                각 이미지의 태그 정보를 바탕으로, 해당 사진이 글의 흐름상 자연스러운 위치에 오도록 배치해줘. 예를 들어 '외관' 태그는 글의 초반부에, '메인음식'은 중간 상세 설명 부분에 언급해줘.
                 선택된 제목: {selected_title}
                 주제: {user_idea} (카테고리: {category})
                 이미지 리스트: {img_info}
@@ -111,9 +126,9 @@ if user_idea and uploaded_files:
                 3. 고정 인사말 : 함하! 오늘은 ~~~ 
                 4. 이미지 배치: 본문 중간중간 [IMAGE_파일명_태그]를 삽입할 것.
                 5. 말투: 친근한 블로그 어투 (~해요, ~했답니다).
-                6. 이모지 사용: 문장 사이에 적절한 이모지를 풍부하게 넣어줘.
+                6. 이모지 사용 금지.
                 7. 고정 클로징 : 함바! ~~~
-                8. 마지막에 관련 해시태그 20개를 #태그명 형태로 나열해줘(공백 제거).
+                8. 마지막에 관련 해시태그 20~30개를 #태그명 형태로 나열해줘(공백 제거).
                 """
 
                 try:
