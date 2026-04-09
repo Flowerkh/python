@@ -17,6 +17,7 @@ def compress_image(input_path, output_path, quality=85):
 
             # 이미지 저장 (optimize=True는 추가적인 용량 최적화를 수행함)
             img.save(output_path, "JPEG", optimize=True, quality=quality)
+            img.thumbnail((1024, 1024))
 
             original_size = os.path.getsize(input_path) / 1024
             compressed_size = os.path.getsize(output_path) / 1024
