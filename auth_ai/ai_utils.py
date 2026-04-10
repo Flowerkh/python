@@ -36,10 +36,14 @@ def get_ai_client(model_choice):
 
 def generate_text(model_choice: str, client, gemini_model, prompt: str) -> str:
     if model_choice == "OpenAI":
+        if client is None:
+            raise ValueError("OpenAI 클라이언트가 초기화되지 않았습니다.")
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
         return response.choices[0].message.content
     else:
+        if gemini_model is None:
+            raise ValueError("Gemini 모델이 초기화되지 않았습니다.")
         return gemini_model.generate_content(prompt).text

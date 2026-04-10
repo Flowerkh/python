@@ -133,7 +133,7 @@ if user_idea and uploaded_files:
                     except Exception as e:
                         st.error(f"본문 생성 중 오류 발생: {e}")
 
-    if 'final_blog' in st.session_state:
-        st.subheader("✅ 최종 완성본")
-        st.text_area("결과 복사", st.session_state.final_blog, height=600)
-        st.download_button("텍스트 파일 저장", st.session_state.final_blog, file_name="ai_blog_post.txt")
+        if 'final_blog' in st.session_state:
+            st.subheader("✅ 최종 완성본")
+            st.text_area("결과 복사", st.session_state.final_blog, height=600)
+            st.download_button("텍스트 파일 저장", st.session_state.final_blog, file_name="ai_blog_post.txt")
