@@ -28,5 +28,8 @@ project/*/*.json
 kakao/*.json
 /test.txt
 
+# 인스타 세션 파일 (인증 토큰 포함)
+auth_ai/instagram_auto/insta_session.json
+
 #포함
 !discord/blacklist/black_list.txt

@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 from google import genai
 from instagrapi import Client
-from PIL import Image
 import tempfile
 
 root_dir = Path(__file__).resolve().parent.parent
@@ -30,16 +29,21 @@ def get_gemini_client():
 
 @st.cache_resource
 def get_insta_client():
+    if not USERNAME or not PASSWORD:
+        raise ValueError("INSTA_USERNAME 또는 INSTA_PASSWORD가 없습니다. .env 파일을 확인해주세요.")
     cl = Client()
     if SESSION_FILE.exists():
         cl.load_settings(SESSION_FILE)
-        cl.login(USERNAME, PASSWORD)
+        try:
+            cl.login(USERNAME, PASSWORD)
+        except Exception:
+            SESSION_FILE.unlink()
+            cl.login(USERNAME, PASSWORD)
+            cl.dump_settings(SESSION_FILE)
     else:
         cl.login(USERNAME, PASSWORD)
         cl.dump_settings(SESSION_FILE)
     return cl
-
-client = get_gemini_client()
 
 # --- 2. Streamlit UI ---
 st.set_page_config(page_title="인스타 릴스 업로더", page_icon="🎬")
@@ -53,7 +57,11 @@ user_topic = st.text_input("게시글 주제 (예: 12지신 애니메이션)")
 
 # --- 3. Gemini 본문 생성 ---
 if st.button("📝 AI 본문 생성"):
-    if uploaded_video and user_topic:
+    if not uploaded_video:
+        st.warning("영상을 먼저 선택해주세요.")
+    elif not user_topic:
+        st.warning("게시글 주제를 입력해주세요.")
+    else:
         with st.spinner("AI가 영상을 분석하고 글을 쓰고 있습니다..."):
             try:
                 prompt = textwrap.dedent(f"""
@@ -65,7 +73,7 @@ if st.button("📝 AI 본문 생성"):
                     3. 말투 : 친근한 블로그 어투 (~해요. ~했답니다.)
                     4. 이모지 사용 : 문장 사이에 적절한 이모지 사용
                 """).strip()
-                response = client.models.generate_content(
+                response = get_gemini_client().models.generate_content(
                     model="gemini-flash-latest",
                     contents=[prompt]
                 )
