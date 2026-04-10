@@ -1,21 +1,12 @@
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from openai import OpenAI
 import google.generativeai as genai
-from pathlib import Path
 
 
 # 공용 환경 변수 로드 함수
 def load_ai_keys():
-    # 현재 파일(ai_utils.py) 기준으로 상위 폴더의 .env를 찾음
-    current_dir = Path(__file__).resolve().parent
-    env_path = current_dir / '.env'  # auth_ai/.env 위치 기준
-
-    # 만약 위 경로에 없다면 프로젝트 루트도 확인 (유연성)
-    if not env_path.exists():
-        env_path = current_dir.parent / '.env'
-
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(find_dotenv(raise_error_if_not_found=True))
     return {
         "openai": os.getenv("OPENAI_API_KEY"),
         "gemini": os.getenv("GEMINI_API_KEY")
@@ -41,3 +32,14 @@ def get_ai_client(model_choice):
             return None, "Gemini API 키가 없습니다."
 
     return None, "모델 선택이 잘못되었습니다."
+
+
+def generate_text(model_choice: str, client, gemini_model, prompt: str) -> str:
+    if model_choice == "OpenAI":
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
+    else:
+        return gemini_model.generate_content(prompt).text
