@@ -4,8 +4,6 @@ from PIL import Image
 import sys
 from pathlib import Path
 
-# 1. 현재 파일(blog_app.py)의 부모의 부모 폴더(auth_ai) 경로를 계산합니다.
-# .parent는 blog_auto, .parent.parent는 auth_ai 폴더가 됩니다.
 root_dir = Path(__file__).resolve().parent.parent
 if str(root_dir) not in sys.path:
     sys.path.append(str(root_dir))
@@ -41,6 +39,11 @@ with st.sidebar:
     tag_options = CATEGORY_TAGS.get(category, CATEGORY_TAGS["일상"])
     user_idea = st.text_area("글감 입력", placeholder="예: 강남역 데이트 맛집 후기")
 
+if st.session_state.get("last_model") != model_choice:
+    st.session_state.pop("suggested_titles", None)
+    st.session_state.pop("final_blog", None)
+    st.session_state["last_model"] = model_choice
+
 # --- API 클라이언트 초기화 (공용 모듈 사용) ---
 @st.cache_resource
 def load_ai_client(model_choice):
@@ -70,7 +73,6 @@ if uploaded_files:
         with cols[idx % 3]:
             thumb = resize_image(file)
             st.image(thumb, use_container_width=True)
-            # 위에서 설정한 tag_options가 여기서 사용됩니다.
             tag_data[file.name] = st.selectbox(
                 f"분류 {idx + 1}",
                 tag_options,
@@ -101,30 +103,35 @@ if user_idea and uploaded_files:
         # --- Step 3: 본문 생성 ---
         st.header("📝 Step 3: 본문 생성")
         if st.button(f"🚀 '{selected_title}' 제목으로 글쓰기"):
-            with st.spinner("본문을 작성 중입니다..."):
-                img_info = "\n".join([f"- {name}: {tag}" for name, tag in tag_data.items()])
-                prompt = textwrap.dedent(f"""
-                    블로그 본문을 작성해줘.
-                    각 이미지의 태그 정보를 바탕으로, 해당 사진이 글의 흐름상 자연스러운 위치에 오도록 배치해줘. 예를 들어 '외관' 태그는 글의 초반부에, '메인음식'은 중간 상세 설명 부분에 언급해줘.
-                    선택된 제목: {selected_title}
-                    주제: {user_idea} (카테고리: {category})
-                    이미지 리스트: {img_info}
+            if error_msg:
+                st.warning("AI 클라이언트가 초기화되지 않았습니다. 사이드바의 오류를 확인해주세요.")
+            else:
+                with st.spinner("본문을 작성 중입니다..."):
+                    img_info = "\n".join([f"- {name}: {tag}" for name, tag in tag_data.items() if tag != "선택안함"])
+                    if not img_info:
+                        img_info = "태그 없음"
+                    prompt = textwrap.dedent(f"""
+                        블로그 본문을 작성해줘.
+                        각 이미지의 태그 정보를 바탕으로, 해당 사진이 글의 흐름상 자연스러운 위치에 오도록 배치해줘. 예를 들어 '외관' 태그는 글의 초반부에, '메인음식'은 중간 상세 설명 부분에 언급해줘.
+                        선택된 제목: {selected_title}
+                        주제: {user_idea} (카테고리: {category})
+                        이미지 리스트: {img_info}
 
-                    [조건]
-                    1. 제목은 반드시 '{selected_title}'를 사용할 것.
-                    2. 분량: 1,500자 이상 상세한 본문.
-                    3. 고정 인사말 : 함하! 오늘은 ~~~
-                    4. 이미지 배치: 본문 중간중간 [IMAGE_파일명_태그]를 삽입할 것.
-                    5. 말투: 친근한 블로그 어투 (~해요, ~했답니다).
-                    6. 이모지 사용 금지.
-                    7. 고정 클로징 : 함바! ~~~
-                    8. 마지막에 관련 해시태그 20~30개를 #태그명 형태로 나열해줘(공백 제거).
-                """).strip()
+                        [조건]
+                        1. 제목은 반드시 '{selected_title}'를 사용할 것.
+                        2. 분량: 1,500자 이상 상세한 본문.
+                        3. 고정 인사말 : 함하! 오늘은 ~~~
+                        4. 이미지 배치: 본문 중간중간 [IMAGE_파일명_태그]를 삽입할 것.
+                        5. 말투: 친근한 블로그 어투 (~해요, ~했답니다).
+                        6. 이모지 사용 금지.
+                        7. 고정 클로징 : 함바! ~~~
+                        8. 마지막에 관련 해시태그 20~30개를 #태그명 형태로 나열해줘(공백 제거).
+                    """).strip()
 
-                try:
-                    st.session_state.final_blog = generate_text(model_choice, client, gemini_model, prompt)
-                except Exception as e:
-                    st.error(f"본문 생성 중 오류 발생: {e}")
+                    try:
+                        st.session_state.final_blog = generate_text(model_choice, client, gemini_model, prompt)
+                    except Exception as e:
+                        st.error(f"본문 생성 중 오류 발생: {e}")
 
     if 'final_blog' in st.session_state:
         st.subheader("✅ 최종 완성본")
