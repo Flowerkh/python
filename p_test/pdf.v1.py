@@ -308,8 +308,6 @@ def bp_post_check():
 
     if request_info == '':
         # 1. 입력받은 json에서 ci의 유무 확인
-        data = request.json
-
         def safe_strip(value):
             return value.strip() if value else ""
 
@@ -384,36 +382,36 @@ def bp_post_check():
 
         # 파라미터에 따라 query where 조건 변경
         if coworker_name is not None:
-            select_query_1 += " AND tau.coworker = %s"
+            select_query_1 += " AND vau.coworker = %s"
             select_query_2 += " AND coworker_name = %s"
             params_1.append(coworker_name)
             params_2.append(coworker_name)
 
         if service is not None:
             if service == "genome":
-                select_query_1 += " AND tau.service = 'genome'"
+                select_query_1 += " AND vau.omics_type = 'genome'"
             elif service == "biome":
-                select_query_1 += " AND r.service IN ('biome', 'thebiome')"
+                select_query_1 += " AND vau.omics_type IN ('biome', 'thebiome')"
 
         if product_code is not None:
-            select_query_1 += " AND tau.productCode = %s"
+            select_query_1 += " AND vau.productCode = %s"
             select_query_2 += " AND product_code = %s"
             params_1.append(product_code)
             params_2.append(product_code)
 
         if user_name is not None:
-            select_query_1 += " AND tau.user_name = %s"
+            select_query_1 += " AND vau.user_name = %s"
             select_query_2 += " AND client_name = %s"
             params_1.append(user_name)
             params_2.append(user_name)
 
         if gentok_order_code is not None:
-            select_query_1 += " AND tau.platform_order_code = %s"
+            select_query_1 += " AND vau.platform_order_code = %s"
             params_1.append(gentok_order_code)
 
         if kit_id is not None:
-            select_query_1 += " AND r.kit_id = %s"
-            select_query_2 += " AND r.kit_id = %s"
+            select_query_1 += " AND vau.kitid = %s"
+            select_query_2 += " AND kitID_1 = %s"
             params_1.append(kit_id)
             params_2.append(kit_id)
 
@@ -421,8 +419,20 @@ def bp_post_check():
         #    b2borderList_v7에서 ci 조건으로 값 조회 (kit_id는 2가 있으면 2, 아니면 1)
 
         # TODO: AND tau.service = 'genome' 고쳐야 함.
+        # 분석 DB에 없으면 DTC DB에서 조회
+        anal_tau_result = queryall('anal', select_query_1, params_1)
         tau_result = queryall('b2b', select_query_1, params_1)
         v7_result = queryall('b2b', select_query_2, params_2)
+
+        # 재채취키트 존재시 재채취 키트번호로 교체
+        for anal_order in anal_tau_result.rows:
+            for idx, tau_order in enumerate(tau_result.rows):
+                if (anal_order['gentok_order_code'] == tau_order['gentok_order_code']
+                        and anal_order['kit_id'] != tau_order['kit_id']):
+                    tau_result.rows[idx]['kit_id'] = anal_order['kit_id']
+                else:
+                    pass
+
         combined_result = tau_result.rows + v7_result.rows
 
         if len(combined_result) == 0:
@@ -541,7 +551,8 @@ def bp_post_check():
                         merged_dict["user_collect_date"] = merged_dict["user_collect_date"].strftime("%Y-%m-%d")
 
                     dict_merge_result.append(merged_dict)
-                    serialize_dict_merge_result = serialize_for_json(dict_merge_result)
+
+            serialize_dict_merge_result = serialize_for_json(dict_merge_result)
 
             # TODO: 1. find_pdf_file로 파일이 있는지 여부를 체크해서 response 하는 것
             # TODO: 2. 또는 download시 참고할 값 DB에 insert
