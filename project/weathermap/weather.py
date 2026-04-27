@@ -17,7 +17,7 @@ temp = result['main']['temp']
 humidity = result['main']['humidity']
 
 # KAKAO
-with open("../kakao/kakao_code.json", "r") as kakao:
+with open("../../kakao/kakao_code.json", "r") as kakao:
     kaka_tks = json.load(kakao)
 
 kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"

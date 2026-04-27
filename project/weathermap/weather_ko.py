@@ -33,7 +33,7 @@ weather_7days = f"{day_plus(7)}▶{weather['wf7Am']}({weather['rnSt7Am']}%) / {w
 
 
 # KAKAO
-with open("../kakao/kakao_code.json", "r") as kakao:
+with open("../../kakao/kakao_code.json", "r") as kakao:
     kaka_tks = json.load(kakao)
 
 kakao_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
