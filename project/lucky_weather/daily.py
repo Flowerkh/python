@@ -123,7 +123,32 @@ def get_lucky():
         if text:
             lines.append(text)
 
-    return lines
+    return _filter_first_sentence(lines)  # ← 여기만 변경
+
+
+def _filter_first_sentence(lines: list[str]) -> list[str]:
+    import re
+    result = []
+    for line in lines:
+        # 띠 헤더는 그대로
+        if re.fullmatch(r"〈.+띠〉", line.strip()):
+            result.append(line)
+
+        # 연도생으로 시작하는 본문 줄 → 첫 문장만
+        elif re.match(r"[\d,\s]+년생", line.strip()):
+            match = re.match(r"([\d,\s]+년생\s+.+?\.)", line.strip())
+            if match:
+                result.append(match.group(1))
+            else:
+                result.append(line)
+
+        # 운세지수, 날짜, 기타는 그대로
+        elif line.startswith("운세지수"):
+            result.append(line)
+        else:
+            result.append(line)
+
+    return result
 
 
 # ─────────────────────────────────────────
