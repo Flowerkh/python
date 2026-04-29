@@ -1,9 +1,9 @@
-import requests
 from datetime import datetime
 from collections import defaultdict
+import requests
 
 
-def get_seoul_weather_today():
+def get_seoul_weather_today() -> dict:
     """서울의 오늘 오전/오후 날씨 예보를 가져옵니다."""
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -11,29 +11,25 @@ def get_seoul_weather_today():
         "longitude": 126.9780,
         "hourly": "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,wind_speed_10m",
         "timezone": "Asia/Seoul",
-        "forecast_days": 1,  # 오늘만
+        "forecast_days": 1,
     }
-
     try:
         response = requests.get(url, params=params, timeout=(30, 30))
         response.raise_for_status()
         data = response.json()
-
         return _summarize_am_pm(data["hourly"])
     except requests.RequestException as e:
         return {"error": f"날씨 정보를 가져오는데 실패했습니다: {e}"}
 
 
 def _summarize_am_pm(hourly: dict) -> dict:
-    """시간별 데이터를 오전/오후로 묶어 요약합니다."""
-    times = hourly["time"]
-    temps = hourly["temperature_2m"]
+    times      = hourly["time"]
+    temps      = hourly["temperature_2m"]
     humidities = hourly["relative_humidity_2m"]
-    codes = hourly["weather_code"]
+    codes      = hourly["weather_code"]
     rain_probs = hourly["precipitation_probability"]
-    winds = hourly["wind_speed_10m"]
+    winds      = hourly["wind_speed_10m"]
 
-    # 오전(0~11시) / 오후(12~23시)로 분리
     periods = defaultdict(lambda: {
         "temps": [], "humidities": [], "codes": [],
         "rain_probs": [], "winds": []
@@ -53,15 +49,14 @@ def _summarize_am_pm(hourly: dict) -> dict:
         d = periods[period]
         if not d["temps"]:
             continue
-        # 가장 자주 나타난 날씨 코드를 대표값으로
         dominant_code = max(set(d["codes"]), key=d["codes"].count)
         result[period] = {
-            "최저기온": f"{min(d['temps'])}°C",
-            "최고기온": f"{max(d['temps'])}°C",
-            "평균습도": f"{round(sum(d['humidities']) / len(d['humidities']))}%",
+            "최저기온":    f"{min(d['temps'])}°C",
+            "최고기온":    f"{max(d['temps'])}°C",
+            "평균습도":    f"{round(sum(d['humidities']) / len(d['humidities']))}%",
             "최대강수확률": f"{max(d['rain_probs'])}%",
-            "평균풍속": f"{round(sum(d['winds']) / len(d['winds']), 1)} km/h",
-            "날씨": _decode_weather(dominant_code),
+            "평균풍속":    f"{round(sum(d['winds']) / len(d['winds']), 1)} km/h",
+            "날씨":       _decode_weather(dominant_code),
         }
     return result
 
@@ -80,19 +75,3 @@ def _decode_weather(code: int) -> str:
         95: "천둥번개", 96: "천둥번개와 약한 우박", 99: "천둥번개와 강한 우박",
     }
     return weather_map.get(code, f"알 수 없음 (코드: {code})")
-
-
-if __name__ == "__main__":
-    today = datetime.now().strftime("%Y-%m-%d")
-    print(f"=== 서울 날씨 ({today}) ===\n")
-
-    weather = get_seoul_weather_today()
-
-    if "error" in weather:
-        print(weather["error"])
-    else:
-        for period, info in weather.items():
-            print(f"[{period}]")
-            for key, value in info.items():
-                print(f"  {key}: {value}")
-            print()
