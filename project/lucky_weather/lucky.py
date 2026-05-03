@@ -44,16 +44,39 @@ def get_lucky() -> list:
     return _filter_first_sentence(lines)
 
 
+def _fix_missing_years(line: str) -> str:
+    """누락된 연도 보정: 05→93, 06→94, 07→95 추가"""
+    replacements = [
+        (r"\b05,\s*81년생", "05, 93, 81년생"),
+        (r"\b06,\s*82년생", "06, 94, 82년생"),
+        (r"\b07,\s*83년생", "07, 95, 83년생"),
+    ]
+    for pattern, repl in replacements:
+        line = re.sub(pattern, repl, line)
+    return line
+
+
 def _filter_first_sentence(lines: list) -> list:
     result = []
     for line in lines:
-        if re.fullmatch(r"〈.+띠〉", line.strip()):
+        stripped = line.strip()
+
+        if re.fullmatch(r"〈.+띠〉", stripped):
             result.append(line)
-        elif re.match(r"[\d,\s]+년생", line.strip()):
-            match = re.match(r"([\d,\s]+년생\s+.+?\.)", line.strip())
-            result.append(match.group(1) if match else line)
-        elif line.startswith("운세지수"):
+            continue
+
+        if stripped.startswith("금전") and "운세지수" in stripped:
             result.append(line)
+            continue
+
+        # 누락된 연도 보정
+        line = _fix_missing_years(line)
+
+        # 두 번째 연령 그룹 앞에서 자르기
+        matches = list(re.finditer(r"(?:\d{2},\s*)*\d{2}년생", line))
+        if len(matches) >= 2:
+            result.append(line[:matches[1].start()].strip())
         else:
             result.append(line)
+
     return result
