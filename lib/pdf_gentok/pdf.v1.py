@@ -6,8 +6,8 @@ from flask import Blueprint, send_file, request, jsonify, Response
 from http import HTTPStatus
 from datetime import date, timedelta, datetime
 
-from lib.db import queryone, queryall
-from lib.util import authenticate, log_http_request_response, get_holiday_count_include_start_date, add_holiday_calc, \
+from python.lib.pdf_gentok.lib.db import queryone, queryall
+from python.lib.pdf_gentok.lib.util import authenticate, log_http_request_response, get_holiday_count_include_start_date, add_holiday_calc, \
     get_check_pdf_cache, insert_check_pdf_cache, serialize_for_json
 from collections import defaultdict
 
