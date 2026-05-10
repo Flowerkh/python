@@ -31,7 +31,7 @@ def compress_image(input_path, output_path, quality=85):
         print(f"에러 발생: {e}")
 
 # 사용 예시
-input_img = "./gal_1.jpg"  # 원본 파일명
-output_img = "gal_20.jpg"  # 결과 파일명
+input_img = "./gal_3.jpg"  # 원본 파일명
+output_img = "gal_3.png"  # 결과 파일명
 
 compress_image(input_img, output_img, quality=60)  # 품질을 60으로 설정

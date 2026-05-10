@@ -8,10 +8,8 @@ from email.header import Header
 from dotenv import load_dotenv
 
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SENDER_PW = os.getenv("SENDER_PW")
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SENDER_EMAIL = "mbp.prd@macrogen.com"
 SENDER_PW = os.getenv("SENDER_PW")
 RECEIVER_LIST = [
@@ -23,24 +21,26 @@ RECEIVER_LIST = [
 LOG_FILE = "C:/Users/김경하/Desktop/기타/error_log"  # 실서버 경로
 POS_FILE = "tmp/log_last_pos.txt"  #마지막 읽은 위치 저장 파일
 
-# 1. AI 분석 함수
+# 1. AI 분석 함수 (Gemini API)
 def get_ai_analysis(logs, is_security=False):
     if not logs: return ""
-    url = "https://api.openai.com/v1/chat/completions"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     role = "보안 전문가" if is_security else "PHP 개발 전문가"
 
     data = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": f"당신은 {role}입니다. 로그를 분석하여 원인과 해결책을 번호 순서대로 한국어로 요약하세요."},
-            {"role": "user", "content": logs}
+        "contents": [
+            {
+                "parts": [
+                    {"text": f"당신은 {role}입니다. 로그를 분석하여 원인과 해결책을 번호 순서대로 한국어로 요약하세요.\n\n{logs}"}
+                ]
+            }
         ]
     }
     try:
         res = requests.post(url,
-                            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                            headers={"Content-Type": "application/json"},
                             data=json.dumps(data), timeout=30)
-        return res.json()['choices'][0]['message']['content']
+        return res.json()['candidates'][0]['content']['parts'][0]['text']
     except:
         return "AI 분석 실패"
 
@@ -53,7 +53,7 @@ def get_new_logs(file_path):
     normal_errors = []
     security_threats = []
 
-    if not os.path.exists(file_path): return "", ""
+    if not os.path.exists(file_path): return "", "", 0  # ← 0 추가
     current_size = os.path.getsize(file_path)
 
     # 마지막 읽은 위치 불러오기
@@ -96,7 +96,7 @@ def get_new_logs(file_path):
         with open(POS_FILE, 'w') as f_pos:
             f_pos.write(str(new_pos))
 
-    return "\n".join(normal_errors), "\n".join(security_threats)
+    return "\n".join(normal_errors), "\n".join(security_threats), new_pos
 
 def send_email(subject, content):
     try:
@@ -116,7 +116,7 @@ def send_email(subject, content):
 
 # 3. 메인 실행
 if __name__ == "__main__":
-    errors, threats = get_new_logs(LOG_FILE)
+    errors, threats, new_pos = get_new_logs(LOG_FILE)
     report = ""
 
     if errors:
