@@ -38,6 +38,7 @@ with st.sidebar:
     category = st.selectbox("카테고리", list(CATEGORY_TAGS.keys()))
     tag_options = CATEGORY_TAGS.get(category, CATEGORY_TAGS["일상"])
     user_idea = st.text_area("글감 입력", placeholder="예: 강남역 데이트 맛집 후기")
+    user_keywords = st.text_input("키워드 입력", placeholder="예: 강남맛집, 데이트코스, 파스타")
 
 if st.session_state.get("last_model") != model_choice:
     st.session_state.pop("suggested_titles", None)
@@ -68,19 +69,22 @@ uploaded_files = st.file_uploader("사진을 올려주세요", accept_multiple_f
 
 tag_data = {}
 if uploaded_files:
-    cols = st.columns(3)
+    cols = st.columns(min(len(uploaded_files), 6))
     for idx, file in enumerate(uploaded_files):
-        with cols[idx % 3]:
-            thumb = resize_image(file)
-            st.image(thumb, use_container_width=True)
-            tag_data[file.name] = st.selectbox(
+        with cols[idx % len(cols)]:
+            thumb = resize_image(file, size=(100, 100))
+            st.image(thumb, width=100)
+            selected_tag = st.selectbox(
                 f"분류 {idx + 1}",
-                tag_options,
+                tag_options + ["직접입력"],
                 key=f"tag_{idx}"
             )
+            if selected_tag == "직접입력":
+                selected_tag = st.text_input(f"태그 입력 {idx + 1}", key=f"custom_tag_{idx}", placeholder="직접 입력")
+            tag_data[file.name] = selected_tag
 
 # --- Step 2: 제목 생성 및 선택 ---
-if user_idea and uploaded_files:
+if user_idea and uploaded_files and user_keywords:
     st.divider()
     st.header("✍️ Step 2: 제목 추천받기")
 
@@ -89,7 +93,7 @@ if user_idea and uploaded_files:
             st.warning("AI 클라이언트가 초기화되지 않았습니다. 사이드바의 오류를 확인해주세요.")
         else:
             with st.spinner("매력적인 제목을 생각 중입니다..."):
-                title_prompt = f"주제 '{user_idea}'와 카테고리 '{category}'에 어울리는 블로그 제목 10개를 추천해줘. 클릭을 부르는 매력적인 문구여야 하며, 번호만 매겨서 나열해줘."
+                title_prompt = f"주제 '{user_idea}'와 카테고리 '{category}'에 어울리는 블로그 제목 10개를 추천해줘. 키워드 '{user_keywords}'를 참고하여 제목에 자연스럽게 반영해줘. 클릭을 부르는 매력적인 문구여야 하며, 번호만 매겨서 나열해줘."
 
                 try:
                     titles_text = generate_text(model_choice, client, gemini_model, title_prompt)
@@ -115,6 +119,7 @@ if user_idea and uploaded_files:
                         각 이미지의 태그 정보를 바탕으로, 해당 사진이 글의 흐름상 자연스러운 위치에 오도록 배치해줘. 예를 들어 '외관' 태그는 글의 초반부에, '메인음식'은 중간 상세 설명 부분에 언급해줘.
                         선택된 제목: {selected_title}
                         주제: {user_idea} (카테고리: {category})
+                        키워드: {user_keywords}
                         이미지 리스트: {img_info}
 
                         [조건]
@@ -126,6 +131,7 @@ if user_idea and uploaded_files:
                         6. 이모지 사용 금지.
                         7. 고정 클로징 : 함바! ~~~
                         8. 마지막에 관련 해시태그 20~30개를 #태그명 형태로 나열해 줘(공백 제거).
+                        9. 키워드 '{user_keywords}'를 본문에 자연스럽게 포함시켜줘. 네이버 검색 노출에 유리하도록 키워드가 본문 전반에 걸쳐 적절히 분포되게 작성해줘.
                     """).strip()
 
                     try:

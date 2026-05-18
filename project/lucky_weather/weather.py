@@ -1,5 +1,8 @@
 import requests
+import urllib3
 from collections import defaultdict
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def get_seoul_weather_today() -> dict:
@@ -8,7 +11,8 @@ def get_seoul_weather_today() -> dict:
         response = requests.get(
             "https://wttr.in/Seoul?format=j1",
             timeout=(30, 30),
-            headers={"User-Agent": "curl/7.0"}
+            headers={"User-Agent": "curl/7.0"},
+            verify=False
         )
         response.raise_for_status()
         data = response.json()
