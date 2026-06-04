@@ -1,2 +1,5 @@
 requests>=2.31
 python-dotenv>=1.0
+python-telegram-bot>=21.0
+openai>=1.50
+portalocker>=2.8

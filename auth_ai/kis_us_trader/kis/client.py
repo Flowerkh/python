@@ -4,6 +4,7 @@
   - get_price(symbol, exchange)        현재가 조회
   - get_balance()                      해외주식 잔고 조회
   - order(symbol, exchange, side, qty, price)  매수/매도 주문
+  - parse_balance_positions(resp)      잔고 응답을 종목별 dict로 정규화(모듈 함수)
 
 모든 호출은 RateLimiter를 거칩니다.
 """
@@ -16,6 +17,48 @@ from .auth import get_access_token
 from .config import Settings, load_settings
 from .notify import send_telegram
 from .rate_limiter import RateLimiter
+
+
+def parse_balance_positions(resp: dict | None) -> dict:
+    """KIS 해외주식 잔고 응답을 {symbol: {qty, avg_price, eval_usd}} 형태로 정규화.
+
+    빈 응답·이상 응답은 빈 dict 반환(fail-closed). 호출부는 빈 dict일 때 BUY 차단
+    같은 보수적 동작을 취하는 것이 원칙(설계 안전장치 #4).
+
+    KIS 응답 필드 매핑:
+      output1[].ovrs_pdno         → symbol
+      output1[].ovrs_cblc_qty     → qty (잔고수량)
+      output1[].pchs_avg_pric     → avg_price (매입평균가, USD)
+      output1[].ovrs_stck_evlu_amt→ eval_usd (해외주식평가금액)
+    """
+    if not resp or not isinstance(resp, dict):
+        return {}
+    rows = resp.get("output1")
+    if not isinstance(rows, list):
+        return {}
+    out: dict[str, dict] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        symbol = (row.get("ovrs_pdno") or "").strip()
+        if not symbol:
+            continue
+        try:
+            qty = int(float(row.get("ovrs_cblc_qty") or 0))
+        except (ValueError, TypeError):
+            qty = 0
+        if qty <= 0:
+            continue  # 보유 0 종목은 노이즈
+        try:
+            avg_price = float(row.get("pchs_avg_pric") or 0)
+        except (ValueError, TypeError):
+            avg_price = 0.0
+        try:
+            eval_usd = float(row.get("ovrs_stck_evlu_amt") or 0)
+        except (ValueError, TypeError):
+            eval_usd = 0.0
+        out[symbol] = {"qty": qty, "avg_price": avg_price, "eval_usd": eval_usd}
+    return out
 
 
 class KISClient:
