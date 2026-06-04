@@ -140,8 +140,11 @@ python test/test_balance_parse.py
 - `rt_cd: "1"` + IP 관련 메시지면 KIS Developers 갱신이 아직 승인 안 됐거나 잘못된 IP를 등록.
 
 ### 3.7 systemd 서비스 등록 (자동 시작 + 자동 재시작)
+
+> ⚠️ `Environment=PYTHONUNBUFFERED=1`은 **필수**. 없으면 Python stdout이 파일로 리다이렉트될 때 block-buffered가 되어 `logs/daily_trader.out`에 출력이 즉시 안 쌓인다(약 4KB 버퍼가 찰 때까지 대기). 사이클이 하루 1회라 사실상 며칠치가 한 번에 flush됨 → tail로 운영 모니터링 불가.
+
 ```bash
-sudo tee /etc/systemd/system/kis-trader.service > /dev/null <<EOF
+sudo tee /etc/systemd/system/kis-trader.service > /dev/null <<'EOF'
 [Unit]
 Description=KIS US Trader daily cycle
 After=network-online.target
@@ -149,13 +152,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=/home/$USER/kis_us_trader_repo/auth_ai/kis_us_trader
-ExecStart=/home/$USER/kis_us_trader_repo/auth_ai/kis_us_trader/.venv/bin/python daily_trader.py
+User=root
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=/opt/kis_us_trader_repo/auth_ai/kis_us_trader
+ExecStart=/opt/kis_us_trader_repo/auth_ai/kis_us_trader/.venv/bin/python daily_trader.py
 Restart=on-failure
 RestartSec=30
-StandardOutput=append:/home/$USER/kis_us_trader_repo/auth_ai/kis_us_trader/logs/daily_trader.out
-StandardError=append:/home/$USER/kis_us_trader_repo/auth_ai/kis_us_trader/logs/daily_trader.err
+StandardOutput=append:/opt/kis_us_trader_repo/auth_ai/kis_us_trader/logs/daily_trader.out
+StandardError=append:/opt/kis_us_trader_repo/auth_ai/kis_us_trader/logs/daily_trader.err
 
 [Install]
 WantedBy=multi-user.target
@@ -164,6 +168,8 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now kis-trader
 ```
+
+> heredoc 본문이 들여쓰기되어 있어 그대로 복붙하면 bash `<<EOF`(non-`-`) 변형이 종료자 매치 실패로 멈춥니다. **실제 적용 시에는 heredoc 본문과 EOF를 들여쓰기 없이** 붙여 넣으세요. 위 마크다운 형식은 가독성 보존용입니다.
 
 ### 3.8 가동 확인
 ```bash
