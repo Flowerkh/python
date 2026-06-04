@@ -38,9 +38,12 @@ kis_us_trader/
 │  ├─ notify.py          # 텔레그램 동기 전송 헬퍼(주문/취소 시 client가 자동 호출)
 │  ├─ rate_limiter.py    # 슬라이딩 윈도우 호출 제한 (sync acquire + async acquire_async)
 │  ├─ state.py           # .state/state.json 영속화. portalocker + asyncio.Lock + ET 자정 리셋.
-│  └─ audit.py           # logs/cycles-YYYYMM.jsonl. SHA-256 hash chain + verify_chain.
+│  ├─ audit.py           # logs/cycles-YYYYMM.jsonl. SHA-256 hash chain + verify_chain.
+│  └─ universe.py        # 매매 가능 종목 화이트리스트(Phase 1: AAPL) + paper_tradable 24h 캐시.
 ├─ llm_advisor.py        # OpenAI 호출 → {action, confidence, reason} JSON
-├─ daily_trader.py       # ★현재 메인: 하루 1회 추세 기반 매매 (KST 07:30 발화, 비동기)
+├─ portfolio.py          # Portfolio 클래스: 잔고 sync(fail-closed) + staged_buys + apply_fill + allocate_budget.
+├─ safety_gate.py        # 8개 안전 검사 게이트(Pick, GateResult, can_buy/can_sell/evaluate).
+├─ daily_trader.py       # ★현재 메인: 12단계 흐름(universe→trend→LLM→safety_gate→승인→주문→apply_fill).
 ├─ docs/                 # 설계·배포 문서
 │  ├─ DESIGN.md          # 다종목/반도체 섹터 확장 설계 + Phase 0~4 로드맵 + 검증 시나리오
 │  └─ DEPLOY_NAVER_CLOUD.md  # 네이버클라우드 배포 절차 (Python 3.11, sparse-checkout, systemd 등)
@@ -48,6 +51,7 @@ kis_us_trader/
 │  ├─ test_order.py       # 주문/취소 API 단독 검증(매수 접수 → 즉시 취소)
 │  ├─ test_balance_parse.py  # 잔고 API 응답 캡처 + parse_balance_positions 9케이스 fail-closed
 │  ├─ test_roundtrip.py   # AAPL 1주 BUY → 30초 → SELL 왕복 + 잔고 폴링
+│  ├─ test_safety_gate.py # 8개 안전 검사 단위 검증 22 케이스(네트워크 무, mock Portfolio)
 │  ├─ test_trader.py      # 일봉조회 + 추세지표 계산 단독 검증
 │  └─ Telegram.py         # 텔레그램 승인 흐름 단독 검증
 ├─ .state/               # ★런타임 생성. git 제외. state.json 영속화.
@@ -94,8 +98,15 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 - [ ] daily_trader 1주일 무에러 운영 (KST 07:30 × 7일)
 - [ ] python -m kis.audit verify — 7줄 hash chain 무결성
 
+### Phase 1 — 다종목 골격 (코드 완료, 운영 검증 대기)
+- [x] kis/universe.py — SEMI_UNIVERSE_CORE 화이트리스트(AAPL) + paper_tradable 24h 캐시
+- [x] portfolio.py — Portfolio(잔고 sync fail-closed + staged_buys + apply_fill + allocate_budget)
+- [x] safety_gate.py — 8개 검사 게이트(can_buy/can_sell/evaluate)
+- [x] test/test_safety_gate.py 22 케이스 통과(네트워크 무, mock Portfolio)
+- [x] daily_trader.py 12단계 흐름 리팩터(_position_qty 전역 삭제, universe 순회, Pick/GateResult)
+- [ ] Phase 1 운영 검증 — AAPL 1종목 1주 운영(staged_buys 사이클 종료 0 리셋 + last_buy_at 갱신 흔적 확인)
+
 ### 그 이후 (계획)
-- [ ] Phase 1: 단일 종목으로 다종목 코드 골격 완성 (universe.py, portfolio.py, safety_gate.py)
 - [ ] Phase 2: 반도체 화이트리스트 10종목 + macro_bias + decide_parallel + 다이제스트 토글 UI
 - [ ] Phase 3: weekly_researcher (web_search 매크로 정성 요약 주 1회)
 - [ ] Phase 4: 운영 강화 (dead-man switch, hash chain, prod 이중 잠금, cost cap)

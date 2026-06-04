@@ -199,20 +199,23 @@ KIS / 텔레그램 / state / Finnhub: 0원.
 
 ---
 
-### Phase 1 (1주) — MVP: 단일 종목 다종목 골격
+### Phase 1 — MVP: 단일 종목 다종목 골격 [코드 완료 · 운영 검증 대기]
 
 **목표**: AAPL 하나로 다종목 코드 경로를 모두 통과시키되 화이트리스트는 AAPL 1개만.
 
-**작업**
-- `kis/universe.py`: `SEMI_UNIVERSE_CORE = [{symbol:'AAPL', exchange:'NASD', sector:'megacap_tech', paper_tradable:True}]` 1개만.
-- `portfolio.py`: `Portfolio(positions, staged_buys, state)` + `sync / can_buy / allocate_budget / apply_fill`. staged_buys 사이클 내 누적.
-- `safety_gate.py`: 8개 검사 순차. `test/test_safety_gate.py` 5케이스.
-- `daily_trader.py` 리팩터: SYMBOL/EXCHANGE/`_position_qty` 전역 삭제, 12단계 흐름으로 분해. `decide_parallel`은 종목 1개만 호출.
-- `kis/audit.py` 통합(이미 됨).
+**완료된 코드** ✅ (2026-06-04, 22 단위 케이스 통과)
+- `kis/universe.py` — `Symbol` 데이터클래스 + `SEMI_UNIVERSE_CORE` tuple(AAPL 1개) + `_BY_SYMBOL`/`_WHITELIST` O(1) 룩업 + `.state/universe_cache.json` 24h paper_tradable 캐시 + `list_all/list_by_sector/get/is_whitelisted/get_sector/is_paper_tradable/is_tradable/refresh_tradable_cache/load_tradable_cache`. 화이트리스트 외 ticker는 `is_whitelisted=False`로 차단.
+- `portfolio.py` — `Portfolio(client)` 생성자에서 자동 sync(실패 시 `sync_failed=True`). `positions / staged_buys / sync_failed / state` 4가지 상태 + `sync / can_buy / record_staged_buy / apply_fill / allocate_budget / total_exposure_usd / sector_exposure_pct / symbol_exposure_usd / account_equity_usd`. **state 갱신은 `apply_fill` 한 곳에서만**(이중 갱신 방지).
+- `safety_gate.py` — `Pick / GateResult` dataclass + `CHECK_*` 식별자 11개 + `DEFAULT_CONSTANTS` 8개 + `can_buy`(8 검사 short-circuit) + `can_sell`(3 검사) + `evaluate`(side 라우팅). 내부 예외는 `CHECK_INTERNAL_ERROR`로 환원되어 절대 raise 안 함.
+- `test/test_safety_gate.py` — 22 케이스(whitelist/invalid/paper_tradable/sync_failed/symbol_cap/sector_cap/total_cap/cooldown × parse_fail × pass / daily_count/budget/loss / sell × holding × whitelist / evaluate routing / partial constants merge / happy path / **same-cycle double pick staged 누적**). Mock Portfolio + fresh_state로 네트워크 0.
+- `daily_trader.py` 리팩터 — `SYMBOL/EXCHANGE/_position_qty` 전역 삭제, 12단계 흐름(`_process_symbol` 분리), 종목별 try/except 격리, `Portfolio`/`safety_gate.evaluate`/`Pick`/`apply_fill` 통합. `ask_approval / on_button` 기존 단건 흐름 유지.
+- `CONSTANTS` 운영 상수 8개 명시(MAX_POSITION_PER_SYMBOL_USD=2000 / MAX_TOTAL_EXPOSURE_USD=10000 / MAX_SECTOR_EXPOSURE_PCT=40 / MAX_NEW_BUYS_PER_DAY=3 / REBUY_COOLDOWN_DAYS=3 / DAILY_TOTAL_BUDGET_USD=600 / DAILY_LOSS_LIMIT_USD=-500 / MAX_CONSECUTIVE_ERRORS=3).
 
 **의도적 제약**: macro_bias·weekly_researcher·다이제스트 토글은 안 만듦. 텔레그램 승인은 기존 단건.
 
-**검증**: AAPL 1종목 1주 운영 후 새 코드 경로(state, staged_buys, safety_gate, audit) 모두 작동.
+**검증 대기** ⏳
+- [ ] AAPL 1종목으로 daily_trader 1주 운영 — staged_buys가 사이클 종료 시 0 리셋(Portfolio 재생성으로 자동) + state.last_buy_at['AAPL'] 갱신 흔적 + safety_gate 차단 사유가 audit log에 기록되는지
+- [ ] Phase 0 회귀: `test_balance_parse.py` / `test_order.py` / `test_roundtrip.py` 여전히 통과 (kis/client.py 무변경이라 이미 보장)
 
 ---
 
@@ -394,3 +397,4 @@ python -m kis.audit verify
 | 2026-06-04 | Phase 0 환경 셋업 완료 반영(네이버클라우드 VM, Python 3.11.15, systemd 가동). `test_balance_parse.py` 통과. 나머지 검증(test_order/roundtrip/7일 운영) 대기. |
 | 2026-06-04 | `test_order.py` 통과(매수 접수→즉시 취소). 남은 검증: test_roundtrip / 7일 운영 / audit verify. |
 | 2026-06-04 | `test_roundtrip.py` 통과(AAPL 1주 BUY→체결→SELL→복귀, 즉시 체결 관측). 주문/체결/잔고 sync 한 사이클 완주. 남은 검증: 7일 운영 / audit verify. |
+| 2026-06-04 | **Phase 1 코드 완료**: kis/universe.py + portfolio.py + safety_gate.py + test_safety_gate.py(22 케이스 통과) + daily_trader.py 12단계 리팩터(SYMBOL 전역 삭제). 운영 검증(1주) 대기. |
