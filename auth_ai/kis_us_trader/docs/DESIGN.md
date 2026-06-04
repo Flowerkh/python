@@ -167,7 +167,7 @@ KIS / 텔레그램 / state / Finnhub: 0원.
 
 ## 5. 단계적 로드맵
 
-### Phase 0 — 선결 조건 [완료된 코드 / 검증 대기]
+### Phase 0 — 선결 조건 [진행 중 · 환경 셋업 완료]
 
 **목표**: 다종목 확장 이전에 단일 종목 환경에서 데이터 신뢰성 확립.
 
@@ -179,14 +179,23 @@ KIS / 텔레그램 / state / Finnhub: 0원.
 - `daily_trader.py` 트리거 23:45 → **07:30 KST** 변경, 사이클 종료 시 audit 기록, 매수 성공 시 state 갱신
 - 단위 스모크 테스트 7개 통과 (state/audit/rate_limiter)
 
-**검증 대기** ⏳ — Phase 0 완료 조건은 사용자 수행
-1. **`test/test_order.py`** — 매수 접수 → 즉시 취소 (한국시간 22:30 이후, DST 기간)
-2. **`test/test_balance_parse.py`** — 잔고 응답 캡처 + parser 검증 (시간대 무관, 지금 가능)
-3. **`test/test_roundtrip.py`** — AAPL 1주 BUY→30초→SELL 왕복 (한국시간 22:30 이후)
-4. **`daily_trader.py` 1주일 운영** — 07:30 KST 발화 × 7일
-5. **`python -m kis.audit verify`** — 7줄 hash chain 무결성
+**환경 셋업 완료** ✅ (2026-06-04, 네이버클라우드 VM `wedding`)
+- Ubuntu 22.04.3 LTS + Python **3.11.15** (deadsnakes PPA, 시스템 3.10.12 보존)
+- sparse-checkout으로 `auth_ai/kis_us_trader`만 받음 (`/opt/kis_us_trader_repo/`)
+- venv + 의존성 설치(portalocker 등)
+- `.env` `chmod 600` 적재
+- KIS Developers IP 화이트리스트 확인 (`test_balance_parse.py` `rt_cd=0`)
+- systemd `kis-trader.service` 가동 (PYTHONUNBUFFERED=1 적용)
+- 텔레그램 시작 메시지 도착 = 자격증명 검증 완료
 
-자세한 절차는 §6 Phase 0 검증 시나리오 참고.
+**검증 진행** — Phase 0 완료 조건
+- [x] **`test/test_balance_parse.py`** — 잔고 응답 캡처 + parser 빈/이상 응답 9케이스 (통과 2026-06-04)
+- [x] **`test/test_order.py`** — 매수 접수 → 즉시 취소 (통과 2026-06-04, 텔레그램 ✅/🚫 도착 확인)
+- [ ] **`test/test_roundtrip.py`** — AAPL 1주 BUY→30초→SELL 왕복 (한국시간 22:30 이후)
+- [ ] **`daily_trader.py` 1주일 운영** — 07:30 KST 발화 × 7일
+- [ ] **`python -m kis.audit verify`** — 7줄 hash chain 무결성
+
+자세한 절차는 §6 Phase 0 검증 시나리오 참고. 배포 절차는 [DEPLOY_NAVER_CLOUD.md](./DEPLOY_NAVER_CLOUD.md).
 
 ---
 
@@ -382,3 +391,5 @@ python -m kis.audit verify
 | 날짜 | 변경 |
 |---|---|
 | 2026-06-04 | 초안 작성. Workflow(11 agents) 결과 통합. Phase 0 코드 완료, 사용자 검증 대기. |
+| 2026-06-04 | Phase 0 환경 셋업 완료 반영(네이버클라우드 VM, Python 3.11.15, systemd 가동). `test_balance_parse.py` 통과. 나머지 검증(test_order/roundtrip/7일 운영) 대기. |
+| 2026-06-04 | `test_order.py` 통과(매수 접수→즉시 취소). 남은 검증: test_roundtrip / 7일 운영 / audit verify. |
