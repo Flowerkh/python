@@ -6,10 +6,16 @@ python-telegram-bot의 비동기 흐름을 거치지 않고 raw HTTP로 보내�
 
 환경변수(TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID) 누락이나 네트워크 오류는
 silent fail — 알림 실패가 매매 흐름을 절대 막지 않도록 합니다.
+
+모듈 로드 시 load_dotenv()를 한 번 호출 — `python -c` 같은 짧은 진입점에서도
+.env가 자동 적재되어 동작. 이미 호출된 적 있다면 idempotent(중복 호출 무해).
 """
 import os
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def send_telegram(text: str) -> bool:
