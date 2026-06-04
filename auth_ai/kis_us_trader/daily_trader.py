@@ -1,19 +1,25 @@
-"""하루 1회 추세 기반 자동매매 (비동기).
+"""하루 1회 추세 기반 자동매매 (비동기) — Phase 1 12단계 흐름.
 
-Phase 0 운영: 단일 종목(AAPL), 일봉 확정 후 한 번 점검.
+Phase 1 운영: 화이트리스트(현재 AAPL 1개)를 순회해 각 종목에 대해
+universe → trend → LLM → safety_gate(8 검사) → Portfolio staged → 텔레그램 승인 →
+주문 → apply_fill → audit log 한 사이클.
 
-한 사이클:
-  0) state 로드 → paused 검사 (paused면 즉시 skip + audit 기록)
-  1) KIS 일봉 조회 → 코드로 추세 지표 계산
-  2) 계산된 '사실'을 LLM에 주고 buy/sell/hold + 확신도 수신
-  3) 안전장치(확신도 임계값, 금액 한도) 통과 시 텔레그램 승인 요청
-  4) 승인되면 금액 기준($BUDGET)으로 수량 계산 후 모의주문
-  5) audit.log_cycle()로 한 줄 append (hash chain)
+한 사이클의 12단계:
+  1)  state 로드 + paused 검사
+  2)  KIS 클라이언트 + Portfolio 초기화(자동 잔고 sync, 실패 시 sync_failed=True)
+  3)  universe.list_all() 순회
+  4)  종목별 일봉 조회 + compute_trend
+  5)  LLM(get_advice) → buy/sell/hold + confidence
+  6)  hold/low_confidence 조기 종료
+  7)  qty/limit_price 계산 → Pick 생성
+  8)  safety_gate.evaluate(pick, portfolio, state, CONSTANTS) → 8 검사
+  9)  통과 시 portfolio.record_staged_buy(BUY만)
+  10) ask_approval(텔레그램 단건 승인, 기존 그대로)
+  11) client.order → rt_cd=0이면 portfolio.apply_fill(positions+state 원자 갱신)
+  12) audit.log_cycle 한 줄 append
 
 트리거 시각: 한국시간 07:30 (= 미국 EDT 18:30 / EST 17:30).
-이유: 미국 정규장이 끝나고 그날 일봉이 확정된 직후 발화해야 안정된 추세로 의사결정.
-
-설계 의도: 추세는 코드가 정확히 계산, 해석/판단은 LLM이.
+설계 의도: 추세/cap/배분은 코드가, 해석/판단은 LLM이. 사람이 텔레그램으로 최종 승인.
 ⚠️ 모의투자 기본. LLM 제안은 투자 추천이 아니며 사람 승인을 거칩니다.
 
 실행: python daily_trader.py
@@ -26,27 +32,39 @@ from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, ContextTypes
 
+from kis import universe
 from kis.audit import log_cycle
 from kis.client import KISClient
 from kis.state import is_paused, load_state, update_state
 from llm_advisor import get_advice
+from portfolio import Portfolio
+from safety_gate import Pick, evaluate
 
 load_dotenv()
 
 # ===== 운영 파라미터 =====
-SYMBOL = "AAPL"
-EXCHANGE = "NASD"
-DAILY_BUDGET_USD = 200.0       # 하루 매수 예산(금액 기준)
-CONFIDENCE_THRESHOLD = 80      # 이 이상일 때만 승인 요청
-MAX_POSITION_USD = 2000.0      # 최대 보유 평가금액 한도(안전장치)
-APPROVAL_TIMEOUT = 1800        # 승인 대기(초). 무응답 시 자동 거절(30분)
+CONFIDENCE_THRESHOLD = 80      # LLM 확신도 임계
+APPROVAL_TIMEOUT = 1800        # 텔레그램 승인 대기(초). 무응답 시 자동 거절(30분)
 RUN_HOUR = 7                   # 매일 실행 시각(한국시간 24h). 미국 정규장 마감 직후.
 RUN_MINUTE = 30
 
+# safety_gate가 사용하는 운영 상수. DEFAULT_CONSTANTS와 동일하지만 명시적으로 한 번 더 보임.
+CONSTANTS = {
+    "MAX_POSITION_PER_SYMBOL_USD": 2000,
+    "MAX_TOTAL_EXPOSURE_USD":      10000,
+    "MAX_SECTOR_EXPOSURE_PCT":     40,
+    "MAX_NEW_BUYS_PER_DAY":        3,
+    "REBUY_COOLDOWN_DAYS":         3,
+    "DAILY_TOTAL_BUDGET_USD":      600,
+    "DAILY_LOSS_LIMIT_USD":        -500,
+    "MAX_CONSECUTIVE_ERRORS":      3,
+}
+
+# 종목별 매수 예산(allocate_budget으로 비례 분배 전 1종목 가정값). Phase 1 단일 종목 운영용.
+PER_PICK_BUDGET_USD = 200.0
+
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-_position_qty = 0  # 보유 수량 추적(실제론 잔고조회로 동기화 권장)
 
 
 def compute_trend(closes: list[float]) -> dict:
@@ -100,38 +118,61 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def daily_cycle(bot):
-    """한 사이클 실행. 종료 시점에서 무조건 audit.log_cycle 한 줄 남긴다."""
-    global _position_qty
-
-    # 0) state 로드 + paused 검사
+    """한 사이클 실행. universe 종목 각각에 대해 12단계 흐름 통과.
+    종목 1개 실패가 다음 종목을 막지 않도록 종목 루프 내 예외는 격리."""
+    # 1) state 로드 + paused 검사
     state = load_state()
     if is_paused(state):
         msg = f"BOT PAUSED (paused_until={state.get('paused_until')}) → 사이클 skip"
         print("  " + msg)
         await bot.send_message(chat_id=CHAT_ID, text=f"⏸️ {msg}")
-        log_cycle("cycle_skipped", {"reason": "paused", "symbol": SYMBOL})
+        log_cycle("cycle_skipped", {"reason": "paused"})
         return
 
+    # 2) 클라이언트 + Portfolio (생성 시 자동 sync — 실패 시 sync_failed=True로 BUY 전면 차단)
     client = KISClient()
+    pf = Portfolio(client)
 
-    closes = client.get_daily_prices(SYMBOL, EXCHANGE, days=60)
+    # 3) 유니버스 순회 (Phase 1: AAPL 1개)
+    for sym_meta in universe.list_all():
+        sym = sym_meta.symbol
+        exch = sym_meta.exchange
+        try:
+            await _process_symbol(bot, client, pf, sym, exch)
+        except Exception as e:
+            err = f"{type(e).__name__}: {e}"
+            print(f"  [{sym} 사이클 오류] {err}")
+            try:
+                update_state(lambda s: s.update({"consecutive_errors": s.get("consecutive_errors", 0) + 1}))
+            except Exception:
+                pass
+            try:
+                log_cycle("error", {"symbol": sym, "error": err})
+            except Exception:
+                pass
+
+
+async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch: str) -> None:
+    """단일 종목에 대한 12단계 처리. 모든 결과는 audit log 1줄로 남는다."""
+    # 4) 일봉 + 추세
+    closes = client.get_daily_prices(sym, exch, days=60)
     if len(closes) < 20:
-        msg = f"일봉 데이터 부족({len(closes)}개). 휴장/운영시간 외일 수 있음. 건너뜀."
+        msg = f"{sym} 일봉 부족({len(closes)}개). 휴장/운영시간 외일 수 있음."
         print("  " + msg)
         await bot.send_message(chat_id=CHAT_ID, text=f"ℹ️ {msg}")
-        log_cycle("cycle_skipped", {"reason": "insufficient_candles", "symbol": SYMBOL, "samples": len(closes)})
+        log_cycle("cycle_skipped", {"symbol": sym, "reason_skip": "insufficient_candles", "samples": len(closes)})
         return
 
     trend = compute_trend(closes)
-    print(f"  추세: price={trend['price']} sma20={trend['sma20']} "
-          f"sma5>sma20={trend['sma5_above_sma20']}")
+    print(f"  [{sym}] price={trend['price']} sma20={trend['sma20']} sma5>sma20={trend['sma5_above_sma20']}")
 
-    advice = get_advice(SYMBOL, trend)
+    # 5) LLM
+    advice = get_advice(sym, trend)
     action, conf, reason = advice["action"], advice["confidence"], advice["reason"]
-    print(f"  LLM: {action} (확신도 {conf}) - {reason}")
+    print(f"  [{sym}] LLM: {action} (확신도 {conf}) - {reason}")
 
     base_payload = {
-        "symbol": SYMBOL,
+        "symbol": sym,
         "price": trend["price"],
         "sma20": trend["sma20"],
         "action": action,
@@ -139,54 +180,69 @@ async def daily_cycle(bot):
         "reason": reason,
     }
 
+    # 6) hold / low_confidence 조기 종료
     if action == "hold":
-        await bot.send_message(chat_id=CHAT_ID, text=f"😴 오늘은 관망(hold). 사유: {reason}")
+        await bot.send_message(chat_id=CHAT_ID, text=f"😴 {sym} 관망(hold). 사유: {reason}")
         log_cycle("cycle_skipped", {**base_payload, "reason_skip": "hold"})
         return
     if conf < CONFIDENCE_THRESHOLD:
         await bot.send_message(
             chat_id=CHAT_ID,
-            text=f"오늘 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.")
+            text=f"{sym} 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.")
         log_cycle("cycle_skipped", {**base_payload, "reason_skip": "low_confidence"})
         return
 
+    # 7) qty/limit 계산 → Pick
     price = trend["price"]
     if action == "buy":
-        qty = int(DAILY_BUDGET_USD // price)
+        qty = int(PER_PICK_BUDGET_USD // price)
         if qty < 1:
-            await bot.send_message(chat_id=CHAT_ID, text=f"예산 ${DAILY_BUDGET_USD}로 1주도 못 삼(주가 ${price}). 건너뜀.")
+            await bot.send_message(chat_id=CHAT_ID, text=f"{sym} 예산 ${PER_PICK_BUDGET_USD}로 1주도 못 삼(주가 ${price}).")
             log_cycle("cycle_skipped", {**base_payload, "reason_skip": "budget_too_small"})
-            return
-        # 최대 보유금액 한도 체크
-        if (_position_qty + qty) * price > MAX_POSITION_USD:
-            await bot.send_message(chat_id=CHAT_ID, text=f"최대 보유금액 한도(${MAX_POSITION_USD}) 초과 → 건너뜀.")
-            log_cycle("cycle_skipped", {**base_payload, "reason_skip": "position_cap"})
             return
         limit = round(price * 1.005, 2)
     else:  # sell
-        if _position_qty <= 0:
-            await bot.send_message(chat_id=CHAT_ID, text="보유 수량 없음 → 매도 건너뜀.")
+        held = pf.positions.get(sym, {}).get("qty", 0)
+        if held <= 0:
+            await bot.send_message(chat_id=CHAT_ID, text=f"{sym} 보유 수량 없음 → 매도 건너뜀.")
             log_cycle("cycle_skipped", {**base_payload, "reason_skip": "no_position"})
             return
-        qty = _position_qty
+        qty = held
         limit = round(price * 0.995, 2)
+    pick = Pick(symbol=sym, side=action, qty=qty, limit_price=limit, confidence=conf, reason=reason)
 
+    # 8) safety_gate — 8개 검사
+    result = evaluate(pick, pf, pf.state, CONSTANTS)
+    if not result.ok:
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=f"🛡️ {sym} 차단({result.check}): {result.reason}")
+        log_cycle("cycle_skipped", {**base_payload, "qty": qty, "limit": limit,
+                                    "reason_skip": result.reason, "check": result.check})
+        return
+
+    # 9) staged_buys 누적 (BUY만)
+    if action == "buy":
+        pf.record_staged_buy(sym, qty, limit)
+
+    # 10) 텔레그램 단건 승인 (기존 ask_approval 흐름 유지)
     summary = (
-        f"🤖 오늘의 매매 승인 요청 ({client.settings.env})\n\n"
-        f"종목: {SYMBOL}\n동작: {'매수' if action=='buy' else '매도'} {qty}주\n"
+        f"🤖 매매 승인 ({client.settings.env})\n\n"
+        f"종목: {sym}\n동작: {'매수' if action=='buy' else '매도'} {qty}주\n"
         f"지정가: ${limit} (현재 ${price})\n"
-        f"예산: ${DAILY_BUDGET_USD}\n확신도: {conf}\n사유: {reason}\n"
-        f"추세: SMA5>SMA20={trend['sma5_above_sma20']}, 5일 {trend['change_5d_pct']}%\n\n"
-        f"현재 보유(추적): {_position_qty}주"
+        f"확신도: {conf}\n사유: {reason}\n"
+        f"추세: SMA5>SMA20={trend['sma5_above_sma20']}, 5일 {trend['change_5d_pct']}%\n"
+        f"현재 노출: ${pf.total_exposure_usd():.0f}"
     )
     decision = await ask_approval(bot, summary)
     if decision != "approve":
-        print(f"  승인 안 됨({decision}).")
-        log_cycle("cycle_skipped", {**base_payload, "qty": qty, "limit": limit, "reason_skip": f"user_{decision}"})
+        print(f"  [{sym}] 승인 안 됨({decision}).")
+        log_cycle("cycle_skipped", {**base_payload, "qty": qty, "limit": limit,
+                                    "reason_skip": f"user_{decision}"})
         return
 
-    # 주문 결과 알림(✅/⚠️)은 KISClient.order가 자동 발송
-    res = client.order(SYMBOL, action, qty, limit, EXCHANGE)
+    # 11) 주문 실행 (텔레그램 ✅/⚠️ 알림은 KISClient.order가 자동 발송)
+    res = client.order(sym, action, qty, limit, exch)
     rt = res.get("rt_cd")
     order_payload = {
         **base_payload,
@@ -196,21 +252,15 @@ async def daily_cycle(bot):
         "msg1": res.get("msg1", ""),
         "odno": (res.get("output") or {}).get("ODNO"),
     }
+
+    # 12) apply_fill (state 갱신 단일 지점) 또는 consecutive_errors 누적
     if rt == "0":
-        _position_qty += qty if action == "buy" else -qty
-        # state 갱신: 매수 성공 시 last_buy_at, daily_* 누적
-        if action == "buy":
-            today_iso = datetime.now().date().isoformat()
-            def _mut(s: dict) -> None:
-                s["last_buy_at"][SYMBOL] = today_iso
-                s["daily_buy_count"] += 1
-                s["daily_buy_amount_usd"] += qty * limit
-                s["consecutive_errors"] = 0
-            update_state(_mut)
-        await bot.send_message(chat_id=CHAT_ID, text=f"📊 보유 갱신: {_position_qty}주")
+        pf.apply_fill(sym, qty, action, limit)
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=f"📊 {sym} {'매수' if action=='buy' else '매도'} 체결 — 보유 {pf.positions.get(sym, {}).get('qty', 0)}주")
         log_cycle("cycle_complete", order_payload)
     else:
-        # 주문 거부 — consecutive_errors 누적
         update_state(lambda s: s.update({"consecutive_errors": s.get("consecutive_errors", 0) + 1}))
         log_cycle("cycle_error", order_payload)
 
@@ -237,14 +287,16 @@ async def main_loop(app):
             print(f"[{datetime.now():%Y-%m-%d %H:%M}] 일일 사이클 시작")
             await daily_cycle(bot)
         except Exception as e:
+            # daily_cycle 자체가 종목별 try/except로 격리하므로 여기 도달은 드물다
+            # (state/Portfolio 초기화 단계 오류 등 cycle 전체가 깨지는 경우)
             err = f"{type(e).__name__}: {e}"
-            print(f"  [오류] {err}")
+            print(f"  [전체 오류] {err}")
             try:
                 update_state(lambda s: s.update({"consecutive_errors": s.get("consecutive_errors", 0) + 1}))
             except Exception:
                 pass
             try:
-                log_cycle("error", {"symbol": SYMBOL, "error": err})
+                log_cycle("error", {"scope": "cycle_global", "error": err})
             except Exception:
                 pass
             try:
