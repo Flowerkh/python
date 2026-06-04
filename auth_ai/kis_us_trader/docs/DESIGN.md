@@ -191,7 +191,7 @@ KIS / 텔레그램 / state / Finnhub: 0원.
 **검증 진행** — Phase 0 완료 조건
 - [x] **`test/test_balance_parse.py`** — 잔고 응답 캡처 + parser 빈/이상 응답 9케이스 (통과 2026-06-04)
 - [x] **`test/test_order.py`** — 매수 접수 → 즉시 취소 (통과 2026-06-04, 텔레그램 ✅/🚫 도착 확인)
-- [ ] **`test/test_roundtrip.py`** — AAPL 1주 BUY→30초→SELL 왕복 (한국시간 22:30 이후)
+- [x] **`test/test_roundtrip.py`** — AAPL 1주 BUY→체결→30초→SELL→잔고 0주 복귀 (통과 2026-06-04, ODNO 0000034635/0000034651)
 - [ ] **`daily_trader.py` 1주일 운영** — 07:30 KST 발화 × 7일
 - [ ] **`python -m kis.audit verify`** — 7줄 hash chain 무결성
 
@@ -393,3 +393,4 @@ python -m kis.audit verify
 | 2026-06-04 | 초안 작성. Workflow(11 agents) 결과 통합. Phase 0 코드 완료, 사용자 검증 대기. |
 | 2026-06-04 | Phase 0 환경 셋업 완료 반영(네이버클라우드 VM, Python 3.11.15, systemd 가동). `test_balance_parse.py` 통과. 나머지 검증(test_order/roundtrip/7일 운영) 대기. |
 | 2026-06-04 | `test_order.py` 통과(매수 접수→즉시 취소). 남은 검증: test_roundtrip / 7일 운영 / audit verify. |
+| 2026-06-04 | `test_roundtrip.py` 통과(AAPL 1주 BUY→체결→SELL→복귀, 즉시 체결 관측). 주문/체결/잔고 sync 한 사이클 완주. 남은 검증: 7일 운영 / audit verify. |

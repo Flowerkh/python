@@ -90,7 +90,7 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 - [x] 네이버클라우드 VM 환경 셋업 (Ubuntu 22.04 + Python 3.11.15 + systemd)
 - [x] test_balance_parse.py 통과 (KIS 잔고 API + parser 9케이스 fail-closed)
 - [x] test_order.py 통과 (매수 접수→즉시 취소, 텔레그램 ✅/🚫 도착 확인)
-- [ ] **test_roundtrip.py — AAPL 1주 BUY→30초→SELL 왕복 (한국시간 22:30 이후, DST)**
+- [x] test_roundtrip.py 통과 (AAPL 1주 BUY→체결→30초→SELL→잔고 0주 복귀)
 - [ ] daily_trader 1주일 무에러 운영 (KST 07:30 × 7일)
 - [ ] python -m kis.audit verify — 7줄 hash chain 무결성
 
