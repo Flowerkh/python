@@ -76,6 +76,25 @@ def compute_trend(closes: list[float]) -> dict:
         return round(sum(closes[-k:]) / k, 2) if n >= k else None
 
     sma5, sma20, sma60 = sma(5), sma(20), sma(60)
+    change_5d_pct = round((price / closes[-6] - 1) * 100, 2) if n >= 6 else None
+
+    # 추세 강도 라벨 (코드 기준 결정적 산출 — LLM 의 모호한 자율 판단을 줄임)
+    #   weak     : SMA5/20 스프레드 < 0.3% 이고 5일 변동 < 1% → 사실상 횡보
+    #   strong   : 스프레드 >= 1.0% 이고 5일 변동 >= 3% → 명확한 추세
+    #   moderate : 그 사이
+    # 임계값은 출발점일 뿐 운영 데이터 보고 조정 필요.
+    if sma5 is None or sma20 is None or change_5d_pct is None:
+        signal_strength = "weak"  # 데이터 부족 시 보수적
+    else:
+        spread_pct = abs(sma5 - sma20) / price * 100
+        chg = abs(change_5d_pct)
+        if spread_pct < 0.3 and chg < 1.0:
+            signal_strength = "weak"
+        elif spread_pct >= 1.0 and chg >= 3.0:
+            signal_strength = "strong"
+        else:
+            signal_strength = "moderate"
+
     return {
         "price": round(price, 2),
         "sma5": sma5,
@@ -83,7 +102,8 @@ def compute_trend(closes: list[float]) -> dict:
         "sma60": sma60,
         "above_sma20": (price > sma20) if sma20 else None,
         "sma5_above_sma20": (sma5 > sma20) if (sma5 and sma20) else None,
-        "change_5d_pct": round((price / closes[-6] - 1) * 100, 2) if n >= 6 else None,
+        "change_5d_pct": change_5d_pct,
+        "signal_strength": signal_strength,
         "samples": n,
     }
 
@@ -164,7 +184,7 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         return
 
     trend = compute_trend(closes)
-    print(f"  [{sym}] price={trend['price']} sma20={trend['sma20']} sma5>sma20={trend['sma5_above_sma20']}")
+    print(f"  [{sym}] price={trend['price']} sma20={trend['sma20']} sma5>sma20={trend['sma5_above_sma20']} signal={trend['signal_strength']}")
 
     # 5) LLM
     advice = get_advice(sym, trend)
@@ -175,6 +195,7 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         "symbol": sym,
         "price": trend["price"],
         "sma20": trend["sma20"],
+        "signal_strength": trend["signal_strength"],
         "action": action,
         "confidence": conf,
         "reason": reason,

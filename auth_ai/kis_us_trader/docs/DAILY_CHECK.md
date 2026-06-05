@@ -12,7 +12,7 @@ Phase 1 운영 검증 기간(7일) 동안 매일 한국시간 **07:35 이후**(d
 |---|---|---|
 | 1 | 텔레그램 폰에서 확인 | 시나리오 A/B/C 중 하나의 메시지 도착 여부 |
 | 2 | `sudo systemctl status kis-trader --no-pager` | `Active: active (running)` |
-| 3 | `tail -30 logs/daily_trader.out` | "추세: price=... LLM: ..." 로그 |
+| 3 | `tail -30 logs/daily_trader.out` | "price=... signal=... LLM: ..." 로그 |
 | 4 | `cat logs/cycles-YYYYMM.jsonl \| tail -1` | 새 audit 한 줄 추가 |
 | 5 | `python -m kis.audit verify` | `체인 검증: OK (N줄)` |
 
@@ -117,10 +117,13 @@ tail -30 /opt/kis_us_trader_repo/auth_ai/kis_us_trader/logs/daily_trader.out
 - ✅ 정상 (사이클 발화 후):
   ```
   [2026-06-XX 07:30] 일일 사이클 시작
-    [AAPL] price=311.5 sma20=305.2 sma5>sma20=True
+    [AAPL] price=311.5 sma20=305.2 sma5>sma20=True signal=moderate
     [AAPL] LLM: buy (확신도 88) - <사유>
   다음 실행까지 23.9시간 대기...
   ```
+  - `signal=weak | moderate | strong` 은 `compute_trend()` 가 스프레드/5일 변동 임계값으로 결정한 추세 강도 라벨.
+  - `signal=weak` 이면 LLM 프롬프트 룰상 강제로 `hold` + confidence ≤ 50 → 시나리오 A 로 흐름.
+  - `signal=strong` 이고 LLM 도 `buy` 면 confidence 가 높게 나오기 쉬워 시나리오 B 로 흐름.
 - ❌ 이상:
   - "일일 사이클 시작" 줄 자체가 없으면 시각/스케줄러 문제.
   - Python traceback이 있으면 §3.2 참고.
@@ -183,7 +186,10 @@ sudo journalctl -u kis-trader -n 100 --no-pager
 
 ### 3.3 사이클은 발화했는데 hold만 계속 나옴
 - 정상 가능성 큼 — LLM이 보수적 판단 시 hold 권장.
-- 7일 전부 hold면 LLM 프롬프트가 너무 보수적일 수 있음 → Phase 2 진입 후 macro_bias 추가로 신호 다양화.
+- 먼저 `signal=...` 라벨을 확인:
+  - `signal=weak` 가 매일 찍히면 추세 임계값(`compute_trend()` 스프레드<0.3% AND |chg|<1%)이 현재 시장 변동성에 비해 너무 보수적일 수 있음. 임계값을 0.2%/0.5% 등으로 낮춰 `moderate` 비율을 늘릴지 검토.
+  - `signal=moderate/strong` 인데도 매일 hold 면 LLM 자체가 보수적인 것 → Phase 2 진입 후 macro_bias 추가로 신호 다양화.
+- 7일 전부 hold 라도 audit log에 `signal_strength` 가 박혀 있어 사후 회고 가능.
 
 ### 3.4 `consecutive_errors`가 누적되고 있음
 ```bash

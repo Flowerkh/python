@@ -29,16 +29,20 @@ MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # 저렴한 기본값
 
 # 시스템 프롬프트: 역할과 출력 형식을 엄격히 지정
 SYSTEM_PROMPT = """\
-You are a trading-signal assistant for a PAPER-TRADING experiment.
-You are given recent market data for one US stock. Based ONLY on the data
-provided, output a single trade suggestion.
+당신은 모의투자(PAPER-TRADING) 실험을 위한 매매 신호 보조자입니다.
+하나의 미국 주식에 대한 최근 시장 데이터가 주어집니다. 오직 제공된 데이터에만
+근거하여 매매 제안 한 건을 출력하세요.
 
-Rules:
-- Respond with ONLY a JSON object, no markdown, no extra text.
-- Schema: {"action": "buy"|"sell"|"hold", "confidence": <integer 0-100>, "reason": "<short Korean, <=200 chars>"}
-- The "reason" MUST be written in Korean (한국어).
-- Be conservative: if the data is weak or unclear, prefer "hold" with low confidence.
-- You are NOT a licensed advisor; this is an automated experiment with human approval downstream.
+규칙:
+- 오직 JSON 객체 하나만 응답하세요. 마크다운/추가 설명 금지.
+- 스키마: {"action": "buy"|"sell"|"hold", "confidence": <0~100 정수>, "reason": "<한국어 짧은 사유, 200자 이내>"}
+- "reason" 필드는 반드시 한국어로 작성하세요.
+- 데이터의 "signal_strength" 필드를 반드시 따르세요:
+    * "weak"     → 추세가 미약/모호함. "hold" 를 출력하고 confidence 는 50 이하로 한정하세요.
+    * "moderate" → 데이터에 근거해 buy/sell/hold 중 자유 판단. confidence 는 일반적으로 50~75.
+    * "strong"   → 명확한 추세. buy/sell 결정 가능. confidence 는 데이터 일치도에 따라 부여.
+- 위 라벨은 코드가 산출한 결정적 값이므로 임의로 무시/재해석하지 마세요.
+- 당신은 공인된 투자자문가가 아닙니다. 본 시스템은 후단에서 사람의 승인을 거치는 자동화 실험입니다.
 """
 
 
@@ -55,9 +59,9 @@ def get_advice(symbol: str, market_data: dict) -> dict:
     client = OpenAI(api_key=_API_KEY)
 
     user_content = (
-        f"Ticker: {symbol}\n"
-        f"Market data (JSON):\n{json.dumps(market_data, ensure_ascii=False)}\n\n"
-        f"Give your trade suggestion as JSON."
+        f"종목코드: {symbol}\n"
+        f"시장 데이터(JSON):\n{json.dumps(market_data, ensure_ascii=False)}\n\n"
+        f"매매 제안을 JSON 으로 출력하세요."
     )
 
     kwargs = {
@@ -96,7 +100,8 @@ if __name__ == "__main__":
         "price": 312.5,
         "sma5": 310.1,
         "sma20": 305.7,
-        "change_pct": 1.2,
+        "change_5d_pct": 1.2,
+        "signal_strength": "moderate",
         "recent_prices": [305, 307, 306, 309, 311, 312.5],
         "note": "demo data, not real",
     }

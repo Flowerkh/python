@@ -50,7 +50,7 @@
 3. **잔고 동기화** → `client.get_balance()` → `parse_balance_positions()`로 정규화. **빈 응답이면 BUY 전면 차단, SELL/HOLD만 허용**(fail-closed).
 4. **유니버스 로드** → `kis.universe.SEMI_UNIVERSE_CORE` 10종목. 각 종목 `paper_tradable` 캐시(24h TTL) 확인.
 5. **사실 수집** (직렬, KIS 1req/sec):
-   - 종목별 `get_daily_prices(60일)` → `compute_trend()` (SMA5/20/60, change_5d, RSI).
+   - 종목별 `get_daily_prices(60일)` → `compute_trend()` (SMA5/20/60, change_5d, **signal_strength** 라벨).
    - SMH ETF 일봉 → `sector.compute_macro_bias()` (`{smh_sma20, smh_sma50, breadth_pct, bias}`). SMH 실패 시 `bias='unknown'`.
    - `state/research_cache.json` 로드 → 7일 이내면 `weekly_macro_view` 사실 블록 첨부, 7~14일이면 `view='stale', hold 편향` 강제, 14일+ 생략.
 6. **LLM 의사결정** → `researcher.decide_parallel()`:
@@ -86,7 +86,7 @@
 - 종목 간 순위/우선순위 (코드가 macro_bias로 N 결정 + confidence 내림차순).
 - 포지션 크기/예산 배분 (`portfolio.allocate_budget`).
 - 한도 검사 (`safety_gate`).
-- SMA/RSI/breadth/macro_bias 계산.
+- SMA/breadth/macro_bias 계산 + `signal_strength` 라벨링(추세 강도 임계값 적용).
 - 실제 주문 호출 (텔레그램 사람 승인 필수).
 - 손절가/익절가 (코드 룰).
 - state.json / audit log 쓰기.
@@ -123,7 +123,7 @@ kis_us_trader/
 
 ---
 
-## 3. 안전장치 13개
+## 3. 안전장치 14개
 
 1. **유니버스 화이트리스트 + symbol 필드 의무화** — `universe.py` 외 ticker는 주문 도달 자체 불가.
 2. **reason 환각 정규식 검증** — reason 텍스트에 입력 외 ticker 등장 시 pick reject + audit.
@@ -138,6 +138,7 @@ kis_us_trader/
 11. **OpenAI retry/timeout 명시** — per-call 30s, 2 retries, 총 300s.
 12. **감사 로그 hash chain** — SHA-256 prev_hash 체인, `verify_chain` 변조 탐지.
 13. **Rate Limit 비동기 준수** — `acquire_async`로 이벤트 루프 블록 없이 1req/sec.
+14. **추세 강도 라벨 결정적 산출** — `compute_trend()` 가 `|sma5-sma20|/price` 스프레드와 `|change_5d_pct|` 임계값으로 `signal_strength: weak | moderate | strong` 라벨을 만들고, LLM 프롬프트는 이 라벨을 따라 confidence 상한·action 제약을 강제(`weak`→`hold` & conf≤50). LLM 의 "약함/모호함" 자율 해석을 배제해 동일 입력 → 동일 분기 보장 + audit log 에 라벨 보존.
 
 ---
 
@@ -398,3 +399,4 @@ python -m kis.audit verify
 | 2026-06-04 | `test_order.py` 통과(매수 접수→즉시 취소). 남은 검증: test_roundtrip / 7일 운영 / audit verify. |
 | 2026-06-04 | `test_roundtrip.py` 통과(AAPL 1주 BUY→체결→SELL→복귀, 즉시 체결 관측). 주문/체결/잔고 sync 한 사이클 완주. 남은 검증: 7일 운영 / audit verify. |
 | 2026-06-04 | **Phase 1 코드 완료**: kis/universe.py + portfolio.py + safety_gate.py + test_safety_gate.py(22 케이스 통과) + daily_trader.py 12단계 리팩터(SYMBOL 전역 삭제). 운영 검증(1주) 대기. |
+| 2026-06-06 | `compute_trend()` 에 `signal_strength: weak\|moderate\|strong` 결정적 라벨 추가(스프레드 0.3%/1.0%, change_5d 1%/3% 임계). `llm_advisor.py` SYSTEM_PROMPT 한글화 + 라벨 강제 룰로 교체("약함/모호함" 자율 해석 제거). 안전장치 14개로 확장. AAPL 실측 라벨=`moderate`(spread 1.93%, chg -1.27%). |
