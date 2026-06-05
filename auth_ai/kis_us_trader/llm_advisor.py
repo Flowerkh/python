@@ -35,7 +35,8 @@ provided, output a single trade suggestion.
 
 Rules:
 - Respond with ONLY a JSON object, no markdown, no extra text.
-- Schema: {"action": "buy"|"sell"|"hold", "confidence": <integer 0-100>, "reason": "<short, <=200 chars>"}
+- Schema: {"action": "buy"|"sell"|"hold", "confidence": <integer 0-100>, "reason": "<short Korean, <=200 chars>"}
+- The "reason" MUST be written in Korean (한국어).
 - Be conservative: if the data is weak or unclear, prefer "hold" with low confidence.
 - You are NOT a licensed advisor; this is an automated experiment with human approval downstream.
 """
@@ -59,15 +60,18 @@ def get_advice(symbol: str, market_data: dict) -> dict:
         f"Give your trade suggestion as JSON."
     )
 
-    resp = client.chat.completions.create(
-        model=MODEL,
-        messages=[
+    kwargs = {
+        "model": MODEL,
+        "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
         ],
-        temperature=0.2,  # 일관성을 위해 낮게
-        response_format={"type": "json_object"},  # JSON 강제
-    )
+        "response_format": {"type": "json_object"},  # JSON 강제
+    }
+    # gpt-5.x / o1 / o3 계열은 temperature 기본값(1)만 허용. 그 외에는 일관성 위해 낮게.
+    if not MODEL.startswith(("gpt-5", "o1", "o3")):
+        kwargs["temperature"] = 0.2
+    resp = client.chat.completions.create(**kwargs)
 
     raw = resp.choices[0].message.content
     data = json.loads(raw)
