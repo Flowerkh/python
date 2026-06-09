@@ -204,16 +204,20 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         "confidence": conf,
         "reason": reason,
     }
+    trend_ctx = (
+        f"📈 signal={trend['signal_strength']} | 현재 ${trend['price']} / SMA20 ${trend['sma20']} "
+        f"/ SMA5>SMA20={trend['sma5_above_sma20']} / 5일 {trend['change_5d_pct']}%"
+    )
 
     # 6) hold / low_confidence 조기 종료
     if action == "hold":
-        await bot.send_message(chat_id=CHAT_ID, text=f"😴 {sym} 관망(hold). 사유: {reason}")
+        await bot.send_message(chat_id=CHAT_ID, text=f"😴 {sym} 관망(hold)\n{trend_ctx}\n사유: {reason}")
         log_cycle("cycle_skipped", {**base_payload, "reason_skip": "hold"})
         return
     if conf < CONFIDENCE_THRESHOLD:
         await bot.send_message(
             chat_id=CHAT_ID,
-            text=f"{sym} 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.\n사유: {reason}")
+            text=f"{sym} 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.\n{trend_ctx}\n사유: {reason}")
         log_cycle("cycle_skipped", {**base_payload, "reason_skip": "low_confidence"})
         return
 
