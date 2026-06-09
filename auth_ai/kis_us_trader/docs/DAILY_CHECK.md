@@ -99,6 +99,15 @@ Phase 1 운영 검증 기간(7일) 동안 매일 한국시간 **07:35 이후**(d
   python -c "from kis.state import update_state; update_state(lambda s: s.update({'paused_until': None, 'consecutive_errors': 0}))"
   ```
 
+### 시나리오 F · 종목 사이클 오류 (LLM/KIS 등 예외)
+```
+⚠️ AAPL 사이클 오류: AuthenticationError: Error code: 401 - ...
+```
+- 종목 처리 중 예외 발생 (LLM 인증 실패, KIS 조회 실패 등). 해당 종목만 건너뛰고 다음 종목/사이클은 계속됨.
+- audit log: `event: error, symbol, error`
+- state.json: `consecutive_errors += 1` (3 누적 시 자동 24h pause → 시나리오 E)
+- 처치: 메시지의 예외 타입으로 원인 판별. `AuthenticationError 401`이면 §3.7 참고.
+
 ---
 
 ## 2. 점검 명령 (정상 동작 확인)
@@ -212,6 +221,12 @@ cat .state/state.json   # paused_until: null 확인
 2. 깨진 위치 확인: 출력에 `line N: ...` 형식 사유 표시됨
 3. 그 줄이 사람 손에 닿은 적 없는데 깨졌다면 파일시스템/디스크 이슈 가능 — VM 스냅샷 복구 검토
 4. 정상 케이스: 운영 중에는 절대 발생하지 않아야 함. 발생 자체가 적신호.
+
+### 3.7 `⚠️ 사이클 오류: AuthenticationError ... 401` (OpenAI 키)
+- `.env`의 `OPENAI_API_KEY`가 무효(폐기/오타/서버-로컬 불일치).
+- 확인: `grep OPENAI_API_KEY .env` 로 키 출처 점검. `.venv/bin/python llm_advisor.py` 단독 실행으로 키 유효성 즉시 검증.
+- ⚠️ `.env` 수정 후엔 반드시 `sudo systemctl restart kis-trader` — 떠 있는 프로세스는 시작 시점의 키를 메모리에 들고 있어 재시작 전까지 안 바뀜.
+- `OPENAI_MODEL`도 유효한 모델명인지 확인 (잘못되면 `model_not_found`).
 
 ---
 
