@@ -170,6 +170,10 @@ async def daily_cycle(bot):
                 log_cycle("error", {"symbol": sym, "error": err})
             except Exception:
                 pass
+            try:
+                await bot.send_message(chat_id=CHAT_ID, text=f"⚠️ {sym} 사이클 오류: {err}")
+            except Exception:
+                pass
 
 
 async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch: str) -> None:
