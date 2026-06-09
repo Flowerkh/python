@@ -23,6 +23,10 @@ daily_trader.compute_trend() 의 weak/moderate/strong 라벨 임계값(spread%, 
 import statistics as st
 import sys
 from collections import defaultdict
+from pathlib import Path
+
+# tools/ 하위에서 실행되어도 kis 패키지를 찾을 수 있도록 프로젝트 루트를 path에 추가
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from kis import universe
 from kis.client import KISClient
