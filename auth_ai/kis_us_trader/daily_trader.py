@@ -213,7 +213,7 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
     if conf < CONFIDENCE_THRESHOLD:
         await bot.send_message(
             chat_id=CHAT_ID,
-            text=f"{sym} 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.")
+            text=f"{sym} 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.\n사유: {reason}")
         log_cycle("cycle_skipped", {**base_payload, "reason_skip": "low_confidence"})
         return
 
