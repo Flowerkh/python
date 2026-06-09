@@ -380,7 +380,7 @@ python -m kis.audit verify
 
 ## 8. 받아들이는 위험
 
-- KIS 정규장만 거래(시간외 갭 즉시 대응 불가)
+- KIS 정규장만 거래(시간외 갭 즉시 대응 불가). ⚠️ 사이클이 07:30 KST(정규장 마감 후) 발화·승인하므로 정규주문 실전 체결 가능성 검증 중 — §9 변경이력(2026-06-09) 참고.
 - 하루 1회 사이클(인트라데이 추격 불가)
 - 반도체 단일 섹터 집중(향후 megacap_tech 등 풀 확장으로 해결)
 - LLM이 매일 hold만 내도 정상으로 본다(보수성 우선)
@@ -400,3 +400,7 @@ python -m kis.audit verify
 | 2026-06-04 | `test_roundtrip.py` 통과(AAPL 1주 BUY→체결→SELL→복귀, 즉시 체결 관측). 주문/체결/잔고 sync 한 사이클 완주. 남은 검증: 7일 운영 / audit verify. |
 | 2026-06-04 | **Phase 1 코드 완료**: kis/universe.py + portfolio.py + safety_gate.py + test_safety_gate.py(22 케이스 통과) + daily_trader.py 12단계 리팩터(SYMBOL 전역 삭제). 운영 검증(1주) 대기. |
 | 2026-06-06 | `compute_trend()` 에 `signal_strength: weak\|moderate\|strong` 결정적 라벨 추가(스프레드 0.3%/1.0%, change_5d 1%/3% 임계). `llm_advisor.py` SYSTEM_PROMPT 한글화 + 라벨 강제 룰로 교체("약함/모호함" 자율 해석 제거). 안전장치 14개로 확장. AAPL 실측 라벨=`moderate`(spread 1.93%, chg -1.27%). |
+| 2026-06-09 | **운영 사고 대응**: 서버 `.env` OpenAI 키가 무효(`sk-svcac…`)라 LLM 401 → 유효 키(`sk-proj…`)로 교체·재시작(`load_dotenv`는 프로세스 시작 시 1회 로드라 재시작 필수). `daily_cycle` 종목 `except` 에 텔레그램 알림 추가 — LLM/KIS 오류가 print/audit 로만 남고 조용히 묻히던 문제 해소. 상세: DAILY_CHECK.md §1 시나리오 F, §3.7. |
+| 2026-06-09 | **signal_strength 예측력 분석**: 2년×5종목(AAPL/NVDA/AMD/TSM/INTC) 일봉으로 검증(통계·퀀트·시스템 3렌즈 적대적 검증, 겹침/검정력 보정). 결론 ① 구 weak(`spread<0.3 AND chg<1`)이 실측 ≤1.7%만 발동 → 'hold 강제' 브레이크 死문자. ② 라벨은 가격 '방향' 예측력 없음(0/5 종목 base 적중률 초과 못함; 최근창 모멘텀은 국면 아티팩트로 표본 밖 역전). ③ '변동성'은 일부 예측(2/5 유의) → 방향 신호가 아니라 보수성 throttle 로만 정당. ④ `CONFIDENCE_THRESHOLD=80`상 strong 만 거래 경로. 상세: SIGNAL_STRENGTH_ANALYSIS.md. |
+| 2026-06-09 | **signal_strength 개편(위 분석 반영)**: weak 판정을 `score(=spread%+\|chg%\|) < 3.5`로 교체(AAPL weak ~1.7%→~31% 정상화, strong AND-gate 유지). `llm_advisor` SYSTEM_PROMPT 의 "strong→buy/sell 결정 가능" 방향성 넛지 삭제(라벨=강도/변동성, 방향은 데이터 필드로만 판단). 임계값/분류를 `kis/signals.py`(`classify_strength`)로 단일화 → `daily_trader`·`tools/tune_thresholds` 공유(복제 드리프트 제거). 분석 도구 `tools/tune_thresholds.py`(score 모드 + directional 검증) 추가. |
+| 2026-06-09 | **주문 타이밍 모순 발견(검증 중)**: 사이클이 07:30 KST(=18:30 ET, 정규장 마감 후) 발화·승인하는데 주문은 정규장 라이브 TR(`VTTT1002U`, `ORD_DVSN=00`). §1의 "07:30=종가 확정 후"와 §8의 "정규장만 거래"가 충돌 → 정규장 마감 후 정규주문은 **실전(prod)에서 미체결/거부 가능**(모의는 시간외 체결 시뮬레이션해 가려졌을 소지). KIS 예약주문/시간외 처리 검증 후 수정안 확정 예정. |
