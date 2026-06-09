@@ -57,6 +57,19 @@
 
 ---
 
+## 현재 상태 (2026-06-09 · 다음 세션 resume 지점)
+
+- **P0 완료 + 서버 배포·검증 끝.** `tools/tune_thresholds.py`가 production 라벨(kis.signals)로
+  동작 확인, AAPL weak **25%**(구 1.2% → 브레이크 부활). 남은 건 내일 07:30 사이클 로그로
+  런타임 경로 최종 확인(`signal=` 출력 정상, weak→hold, traceback 없음).
+- **다음 작업 = P1** (아래 로드맵의 end-to-end 백테스트). 새 세션은 이 문서를 읽고 P1부터 이어가면 됨.
+- ⚠️ KIS `dailyprice`는 ~100일만 반환 → 서버 `tune_thresholds`는 최근 80일 창만 보여
+  방향 적중률이 좋아 **보임**(국면 아티팩트). 방향 엣지 판정 금지. 2년 분석이 진짜 그림.
+- ⚠️ 2년×5종목 분석 원본(Yahoo JSON + 하네스)은 repo 밖 `%TEMP%\sma_analysis`(휘발성).
+  P1은 Yahoo 재수집으로 재현 가능. 하네스 보존이 필요하면 `tools/`로 이전할 것.
+
+---
+
 ## 로드맵
 
 ### P0 — 후속 동기화 (진행 중)
