@@ -8,8 +8,8 @@ daily_trader.compute_trend() 의 weak/moderate/strong 라벨 임계값을 '감'�
      spread%(=|SMA5-SMA20|/price), |5일변동%|, 추세방향(SMA5≷SMA20), forward 수익률 계산
   2) spread/chg/score 분포(백분위) 출력 → 임계값 재스케일 근거
   3) 두 가지 라벨링 방식을 나란히 비교:
-       (A) AND-gate (현행): spread/chg 두 값을 각각 문턱으로 자름
-       (B) score 모드: score = spread + W·chg 한 값의 백분위로 자름 (AND 경계 문제 없음)
+       (A) production: kis.signals.classify_strength (운영과 동일한 실제 로직)
+       (B) score 모드: score = spread + W·chg 한 값의 백분위로 자름 (Phase 2 정규화 후보)
   4) 각 방식에 대해 'directional 검증' 출력:
        - 방향일치 수익률 = 추세방향 × forward 수익률(부호 유지).
          추세가 그 방향으로 이어졌으면 +, 되돌렸으면 −.
@@ -17,12 +17,13 @@ daily_trader.compute_trend() 의 weak/moderate/strong 라벨 임계값을 '감'�
      강한 라벨일수록 방향일치 평균↑ 이고 적중률>50% 면 추세지속 신호로 유효.
      적중률이 ~50% 면 방향 예측력 없음 → 임계값이 아니라 신호 설계를 재검토.
 
-  ⚠️ |수익률|(변동 크기)이 아니라 부호 있는 방향일치 수익률을 본다. signal_strength 는
-     '추세 방향 확신'을 위한 라벨이므로, 변동성이 아니라 방향이 맞았는지가 진짜 검증이다.
+  ⚠️ |수익률|(변동 크기)이 아니라 부호 있는 방향일치 수익률을 본다 — 라벨이 '방향'을
+     예측하는지가 핵심 질문이기 때문(2년 분석 결론: 방향 예측력 없음, 변동성만 일부 예측.
+     docs/SIGNAL_STRENGTH_ANALYSIS.md).
 
-⚠️ 이 스크립트는 분석/시뮬레이션만 한다. 실제 운영 라벨은 daily_trader.compute_trend()
-   안에 인라인된 AND-gate 로직이다. 아래 상수는 그 값을 베껴 둔 것 + score 모드 파라미터이며,
-   여길 고쳐도 운영엔 영향 없음 — 후보값으로 분포/검증이 어떻게 바뀌는지 보는 용도.
+⚠️ 이 스크립트는 분석/시뮬레이션만 한다. production 라벨은 kis/signals.py(classify_strength)
+   한 곳이 진실 소스이며 방식 (A)가 그걸 그대로 호출한다. score 모드(B)는 분석용 대안일 뿐,
+   여길 고쳐도 운영엔 영향 없다.
 
 실행 (KIS IP 화이트리스트 등록 환경 = 서버 권장):
   .venv/bin/python tools/tune_thresholds.py
@@ -39,17 +40,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from kis import universe
 from kis.client import KISClient
-
-# ── (A) AND-gate: daily_trader.compute_trend() 현재 운영값을 베껴 둔 것 ──
-#   weak    : spread < WEAK_SPREAD  AND |chg| < WEAK_CHG
-#   strong  : spread >= STRONG_SPREAD AND |chg| >= STRONG_CHG
-#   moderate: 그 외
-THRESHOLDS = {
-    "WEAK_SPREAD":   0.3,
-    "WEAK_CHG":      1.0,
-    "STRONG_SPREAD": 1.0,
-    "STRONG_CHG":    3.0,
-}
+from kis.signals import (STRONG_CHG_PCT, STRONG_SPREAD_PCT, WEAK_SCORE_CUT,
+                         classify_strength)
 
 # ── (B) score 모드 파라미터 ──
 #   score = spread% + SCORE_CHG_WEIGHT · |chg%|
@@ -89,15 +81,6 @@ def build_rows(closes: list) -> list:
         rows.append({"spread": spread, "chg": chg, "direction": direction,
                      "score": score, "sf1": sf1, "sf5": sf5})
     return rows
-
-
-def label_andgate(r: dict, t: dict) -> str:
-    """(A) compute_trend() 와 동일한 AND-gate 분기."""
-    if r["spread"] < t["WEAK_SPREAD"] and r["chg"] < t["WEAK_CHG"]:
-        return "weak"
-    if r["spread"] >= t["STRONG_SPREAD"] and r["chg"] >= t["STRONG_CHG"]:
-        return "strong"
-    return "moderate"
 
 
 def make_label_score(rows: list):
@@ -161,11 +144,13 @@ def analyze(symbol: str, exchange: str, closes: list) -> None:
     print("    score  :", [round(_pct(scores, q), 3) for q in qs],
           f"(=spread+{SCORE_CHG_WEIGHT}·chg)")
 
-    # (A) 현행 AND-gate
+    # (A) production 라벨링 (kis.signals.classify_strength 공유)
     sf, lo, hi = make_label_score(rows)
     print()
-    directional_report(f"A. AND-gate 현행 {THRESHOLDS}",
-                       rows, lambda r: label_andgate(r, THRESHOLDS))
+    directional_report(
+        f"A. production: weak score<{WEAK_SCORE_CUT} / "
+        f"strong spread>={STRONG_SPREAD_PCT}&chg>={STRONG_CHG_PCT}",
+        rows, lambda r: classify_strength(r["spread"], r["chg"]))
     print()
     directional_report(f"B. score 모드  weak<{lo:.2f} / strong>={hi:.2f} "
                        f"(p{int(SCORE_WEAK_PCTL*100)}/p{int(SCORE_STRONG_PCTL*100)})",

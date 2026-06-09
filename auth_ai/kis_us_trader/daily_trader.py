@@ -35,6 +35,7 @@ from telegram.ext import Application, CallbackQueryHandler, ContextTypes
 from kis import universe
 from kis.audit import log_cycle
 from kis.client import KISClient
+from kis.signals import classify_strength
 from kis.state import is_paused, load_state, update_state
 from llm_advisor import get_advice
 from portfolio import Portfolio
@@ -48,16 +49,7 @@ APPROVAL_TIMEOUT = 1800        # 텔레그램 승인 대기(초). 무응답 시 
 RUN_HOUR = 7                   # 매일 실행 시각(한국시간 24h). 미국 정규장 마감 직후.
 RUN_MINUTE = 30
 
-# ===== signal_strength 라벨 임계값 (compute_trend) =====
-# score = spread%(=|SMA5-SMA20|/price*100) + |5일변동%|.  AAPL 2년 일봉 분포 기준 보정값.
-#   weak  : score < WEAK_SCORE_CUT  (AAPL ~p33 → weak 약 30%)
-#   strong: spread% >= STRONG_SPREAD_PCT  AND  |chg%| >= STRONG_CHG_PCT
-# ⚠️ 구 AND-gate(spread<0.3 AND chg<1.0)는 실측상 weak 이 ~1.7%만 떠 'hold 강제' 브레이크가 死문자였음.
-# ⚠️ 이 라벨은 '추세 강도/변동성'이지 '방향' 신호가 아님 — 방향은 LLM 이 데이터로만 판단(llm_advisor 참고).
-# ⚠️ Phase 2 다종목 진입 시 종목별/변동성정규화 재보정 필요(종목마다 분포가 3~6배 차이).
-WEAK_SCORE_CUT = 3.5
-STRONG_SPREAD_PCT = 1.0
-STRONG_CHG_PCT = 3.0
+# signal_strength 임계값/분류 로직은 kis/signals.py (단일 진실 소스, tune_thresholds 와 공유).
 
 # safety_gate가 사용하는 운영 상수. DEFAULT_CONSTANTS와 동일하지만 명시적으로 한 번 더 보임.
 CONSTANTS = {
@@ -89,25 +81,16 @@ def compute_trend(closes: list[float]) -> dict:
     sma5, sma20, sma60 = sma(5), sma(20), sma(60)
     change_5d_pct = round((price / closes[-6] - 1) * 100, 2) if n >= 6 else None
 
-    # 추세 강도 라벨 (코드가 결정적으로 산출 — LLM 의 모호한 자율 판단을 줄임).
+    # 추세 강도 라벨 (kis.signals.classify_strength — daily_trader/tune_thresholds 공유).
     #   ⚠️ '추세 강도/변동성' 라벨이지 '방향' 신호가 아니다. 방향(매수/매도)은 LLM 이
     #      price·sma5·sma20·change_5d_pct 데이터로만 판단한다(llm_advisor SYSTEM_PROMPT 참고).
-    #   weak     : score(=spread%+|chg%|) < WEAK_SCORE_CUT → 횡보/저변동. LLM 에 hold 강제.
-    #   strong   : spread% >= STRONG_SPREAD_PCT AND |chg%| >= STRONG_CHG_PCT → 변동 큰 날.
-    #   moderate : 그 사이.
-    # 임계값 근거/재보정은 위 상수 정의 + tools/tune_thresholds.py 참고.
+    #   임계값 정의/근거는 kis/signals.py, 분포 분석은 tools/tune_thresholds.py 참고.
     if sma5 is None or sma20 is None or change_5d_pct is None:
         signal_strength = "weak"  # 데이터 부족 시 보수적
     else:
         spread_pct = abs(sma5 - sma20) / price * 100
         chg = abs(change_5d_pct)
-        score = spread_pct + chg
-        if score < WEAK_SCORE_CUT:
-            signal_strength = "weak"
-        elif spread_pct >= STRONG_SPREAD_PCT and chg >= STRONG_CHG_PCT:
-            signal_strength = "strong"
-        else:
-            signal_strength = "moderate"
+        signal_strength = classify_strength(spread_pct, chg)
 
     return {
         "price": round(price, 2),
