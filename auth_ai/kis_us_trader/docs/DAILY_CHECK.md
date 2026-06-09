@@ -108,6 +108,16 @@ Phase 1 운영 검증 기간(7일) 동안 매일 한국시간 **07:35 이후**(d
 - state.json: `consecutive_errors += 1` (3 누적 시 자동 24h pause → 시나리오 E)
 - 처치: 메시지의 예외 타입으로 원인 판별. `AuthenticationError 401`이면 §3.7 참고.
 
+### 시나리오 G · 주문 보류 / 체결 미확인 (Rank 0 안전패치)
+```
+⏰ AAPL buy(확신도 85) 신호지만 미국 정규장 외(18:30 ET) → 주문 보류.
+```
+- 매매 신호(strong + conf≥80)가 났으나 **미국 정규장(09:30~16:00 ET) 밖**이라 주문 보류.
+  audit: `cycle_skipped, reason_skip: out_of_session`. **현 07:30 KST 사이클은 항상 정규장 밖**이라
+  tradeable 신호는 시나리오 B(승인창) 대신 이 메시지로 나온다(정상). 배경/실행 fix: docs/ORDER_TIMING_ISSUE.md
+- (정규장중 실행 시만) 주문 접수됐으나 체결이 잔고에 안 잡히면 `🟡 ... 체결 미확인 → 보유 반영 보류`.
+  audit: `cycle_accepted_unfilled`. rt_cd=0(접수)≠체결이라 가짜 포지션을 안 만든 것(phantom-fill 방지).
+
 ---
 
 ## 2. 점검 명령 (정상 동작 확인)

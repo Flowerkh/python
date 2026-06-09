@@ -27,6 +27,7 @@ universe → trend → LLM → safety_gate(8 검사) → Portfolio staged → �
 import asyncio
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -34,7 +35,7 @@ from telegram.ext import Application, CallbackQueryHandler, ContextTypes
 
 from kis import universe
 from kis.audit import log_cycle
-from kis.client import KISClient
+from kis.client import KISClient, parse_balance_positions
 from kis.signals import classify_strength
 from kis.state import is_paused, load_state, update_state
 from llm_advisor import get_advice
@@ -68,6 +69,8 @@ PER_PICK_BUDGET_USD = 200.0
 
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+ET = ZoneInfo("America/New_York")  # 미국 정규장 시간 판정용(DST 자동 처리)
 
 
 def compute_trend(closes: list[float]) -> dict:
@@ -243,6 +246,19 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
                                     "reason_skip": result.reason, "check": result.check})
         return
 
+    # 8.5) 장 시간 가드 (Rank 0 안전패치) — 미국 정규장 외에는 KIS가 주문을 거부(40580000 '장종료')하므로
+    #   주문을 시도하지 않고 보류한다. 시도 시 거부 + consecutive_errors 누적(3회 시 auto-pause) 연쇄를 막는다.
+    #   ⚠️ 현 07:30 KST 사이클은 항상 정규장 마감 후라 사실상 항상 여기서 보류된다.
+    #   실제 체결 경로는 docs/ORDER_TIMING_ISSUE.md (Rank 1 예약주문 / Rank 2 승인-제출 분리)로 별도 수정 예정.
+    if not us_regular_session_open():
+        et_now = datetime.now(ET)
+        msg = f"⏰ {sym} {action}(확신도 {conf}) 신호지만 미국 정규장 외({et_now:%H:%M} ET) → 주문 보류."
+        print("  " + msg)
+        await bot.send_message(chat_id=CHAT_ID, text=msg)
+        log_cycle("cycle_skipped", {**base_payload, "qty": qty, "limit": limit,
+                                    "reason_skip": "out_of_session"})
+        return
+
     # 9) staged_buys 누적 (BUY만)
     if action == "buy":
         pf.record_staged_buy(sym, qty, limit)
@@ -264,6 +280,7 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         return
 
     # 11) 주문 실행 (텔레그램 ✅/⚠️ 알림은 KISClient.order가 자동 발송)
+    pre_qty = int(pf.positions.get(sym, {}).get("qty", 0))  # 체결 확인 기준(사이클 시작 시 sync된 값)
     res = client.order(sym, action, qty, limit, exch)
     rt = res.get("rt_cd")
     order_payload = {
@@ -275,16 +292,58 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         "odno": (res.get("output") or {}).get("ODNO"),
     }
 
-    # 12) apply_fill (state 갱신 단일 지점) 또는 consecutive_errors 누적
-    if rt == "0":
+    # 12) 접수 실패(거부 등) → consecutive_errors 누적
+    if rt != "0":
+        update_state(lambda s: s.update({"consecutive_errors": s.get("consecutive_errors", 0) + 1}))
+        log_cycle("cycle_error", order_payload)
+        return
+
+    # rt_cd=="0"은 '접수'일 뿐 '체결'이 아니다 → 잔고 재조회로 실제 체결을 확인한 뒤에만 apply_fill.
+    #   (Rank 0 안전패치: 미체결을 가짜 포지션으로 기록하던 phantom-fill 방지. DESIGN line 72 요구사항.)
+    await asyncio.sleep(3)  # 체결이 잔고에 반영될 시간
+    post_qty = _broker_held_qty(client, exch, sym)
+    if action == "buy":
+        confirmed = post_qty is not None and post_qty >= pre_qty + qty
+    else:
+        confirmed = post_qty is not None and post_qty <= pre_qty - qty
+
+    if confirmed:
         pf.apply_fill(sym, qty, action, limit)
         await bot.send_message(
             chat_id=CHAT_ID,
             text=f"📊 {sym} {'매수' if action=='buy' else '매도'} 체결 — 보유 {pf.positions.get(sym, {}).get('qty', 0)}주")
         log_cycle("cycle_complete", order_payload)
     else:
-        update_state(lambda s: s.update({"consecutive_errors": s.get("consecutive_errors", 0) + 1}))
-        log_cycle("cycle_error", order_payload)
+        # 접수는 됐으나 체결 미확인(또는 잔고 조회 실패) — 보유 반영 보류, 가짜 포지션 기록 안 함.
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=f"🟡 {sym} 주문 접수(rt_cd=0)됐으나 체결 미확인(잔고 변화 없음) → 보유 반영 보류. ODNO={order_payload['odno']}")
+        log_cycle("cycle_accepted_unfilled", {**order_payload, "pre_qty": pre_qty, "post_qty": post_qty})
+
+
+def us_regular_session_open(now_et: datetime | None = None) -> bool:
+    """미국 정규장(평일 09:30~16:00 ET) 개장 여부. ZoneInfo로 DST 자동 처리.
+
+    ⚠️ 미국 공휴일/반장일은 보지 않는다(현 07:30 KST 스케줄은 항상 정규장 밖이라 무관).
+    정규장 외에는 KIS가 주문을 거부(40580000 '장종료')하므로 주문 보류 판단에 쓴다.
+    """
+    now = now_et or datetime.now(ET)
+    if now.weekday() >= 5:  # 토(5)/일(6)
+        return False
+    open_t = now.replace(hour=9, minute=30, second=0, microsecond=0)
+    close_t = now.replace(hour=16, minute=0, second=0, microsecond=0)
+    return open_t <= now < close_t
+
+
+def _broker_held_qty(client: KISClient, exch: str, sym: str) -> int | None:
+    """KIS 잔고에서 종목 보유수량 조회. 실패 시 None(체결 확인 불가)."""
+    try:
+        raw = client.get_balance(exch)
+    except Exception:
+        return None
+    if not isinstance(raw, dict) or raw.get("rt_cd") != "0":
+        return None
+    return int(parse_balance_positions(raw).get(sym, {}).get("qty", 0))
 
 
 def seconds_until_next_run() -> float:

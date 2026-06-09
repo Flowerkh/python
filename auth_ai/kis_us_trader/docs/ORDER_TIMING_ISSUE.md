@@ -1,6 +1,7 @@
 # 주문 타이밍 문제 (07:30 KST = 정규장 마감 후)
 
-> 상태: **확인됨 + 실증 확정 (2026-06-09)** · 수정 대기. paper 도 장외 주문 거부(`msg_cd 40580000 "모의투자 장종료"`).
+> 상태: **확인됨 + 실증 확정 (2026-06-09)**. paper 도 장외 주문 거부(`msg_cd 40580000 "모의투자 장종료"`).
+> **Rank 0 안전패치 구현 완료**(장 시간 가드 + phantom-fill 방지). 실행 fix(Rank 1/2)는 보류.
 > 사이클이 07:30 KST에 발화·승인하는데 그 시점 미국 정규장은 닫혀 있고, 주문 코드는
 > 정규장 전용 TR만 쓴다 → 실전(prod)에서 체결 불가. + 가짜 체결(phantom-fill) 버그 동반.
 
@@ -57,11 +58,14 @@
 > 실증으로 paper/prod 모두 장외 거부 확정 → 정규 TR 즉시주문으로는 07:30 체결 불가.
 > **권장 경로: Rank 0(즉시 안전패치) → Rank 1 또는 Rank 2 중 KIS 예약주문 지원 여부로 결정.**
 
-**Rank 0 (선택과 무관하게 필수) — 안전 패치**
-- 주문 시점 ET 계산해 09:30~16:00 ET 밖이면 정규주문 미발송(보류 or 명시적 'out-of-session' audit).
-- **`rt_cd=="0"`만으로 체결 처리 금지** → `apply_fill` 전 `get_balance`/`get_orders`로 실체결 확인
-  (`daily_trader.py:279`, DESIGN line 72의 미구현 요구사항). 가짜 체결 위험 제거.
-- 단독으론 체결을 만들지 못함 → 1/2/3 중 하나와 병행.
+**Rank 0 — 안전 패치  ✅ 구현됨 (2026-06-09)**
+- `daily_trader.us_regular_session_open()` 추가(ZoneInfo, DST 자동). safety_gate 통과 후 주문 전
+  장 시간 가드: 정규장(09:30~16:00 ET) 밖이면 `cycle_skipped/out_of_session` + 텔레그램 "⏰ 주문 보류",
+  주문 미발송 → 거부+`consecutive_errors`+auto-pause 연쇄 차단.
+- **`rt_cd=="0"`만으로 체결 처리 금지**: 주문 직후 `_broker_held_qty()`로 잔고 재조회해 실제 수량
+  증가/감소를 확인한 뒤에만 `apply_fill`. 미확인 시 `cycle_accepted_unfilled` + "🟡 체결 미확인" 알림
+  (가짜 포지션 안 만듦). DESIGN line 72 요구사항 구현.
+- 단독으론 체결을 만들지 못함 → 실제 매매하려면 Rank 1/2/3 중 하나 필요(현재 보류).
 
 **Rank 1 — KIS 미국 예약주문(reserved/pre-open)** *(KIS 지원 시 최선)*
 - 07:30에 승인된 주문을 예약주문으로 제출 → 브로커가 다음 정규장 open에 라우팅. UX 100% 보존.
