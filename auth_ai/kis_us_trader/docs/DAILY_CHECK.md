@@ -108,15 +108,16 @@ Phase 1 운영 검증 기간(7일) 동안 매일 한국시간 **07:35 이후**(d
 - state.json: `consecutive_errors += 1` (3 누적 시 자동 24h pause → 시나리오 E)
 - 처치: 메시지의 예외 타입으로 원인 판별. `AuthenticationError 401`이면 §3.7 참고.
 
-### 시나리오 G · 주문 보류 / 체결 미확인 (Rank 0 안전패치)
+### 시나리오 G · 승인 → 개장 대기 → 제출 (Rank 2 승인-제출 분리)
+07:30 승인(시나리오 B) 후 곧바로 주문되지 않고, **다음 미국 개장(~22:35 KST)** 에 제출된다(07:30은 정규장 마감 후라 즉시주문이 거부되기 때문).
 ```
-⏰ AAPL buy(확신도 85) 신호지만 미국 정규장 외(18:30 ET) → 주문 보류.
+✅ AAPL 매수 1주 @ $303.05 승인 → 다음 미국 개장(~22:35 KST)에 제출 예정.   ← 07:30 승인 직후
+📊 AAPL 매수 체결 — 보유 1주                                              ← ~22:35 KST 개장 제출+체결
 ```
-- 매매 신호(strong + conf≥80)가 났으나 **미국 정규장(09:30~16:00 ET) 밖**이라 주문 보류.
-  audit: `cycle_skipped, reason_skip: out_of_session`. **현 07:30 KST 사이클은 항상 정규장 밖**이라
-  tradeable 신호는 시나리오 B(승인창) 대신 이 메시지로 나온다(정상). 배경/실행 fix: docs/ORDER_TIMING_ISSUE.md
-- (정규장중 실행 시만) 주문 접수됐으나 체결이 잔고에 안 잡히면 `🟡 ... 체결 미확인 → 보유 반영 보류`.
-  audit: `cycle_accepted_unfilled`. rt_cd=0(접수)≠체결이라 가짜 포지션을 안 만든 것(phantom-fill 방지).
+- 07:30 승인 시 `state.pending_orders`에 저장, audit `order_queued`. ~22:35 KST `submission_loop`가
+  제출 → `cycle_complete`(체결) 또는 `🟡 체결 미확인`(`cycle_accepted_unfilled`, 갭으로 미체결 — 가짜 포지션 안 만듦).
+- 변형: 제출 직전 차단 `🛡️ 제출 직전 차단`(`pending_blocked`) / 만료 `⏳ 예약 만료`(18h 초과, `pending_expired`) /
+  보유 없어 매도 취소(`pending_skipped`). 배경: docs/ORDER_TIMING_ISSUE.md
 
 ---
 

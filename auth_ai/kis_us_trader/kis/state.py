@@ -9,6 +9,8 @@
   - daily_loss_realized_usd : 당일 실현 손실 (음수로 누적)
   - daily_reset_date_et     : 당일 카운터의 ET 날짜. 다르면 daily_* 리셋
   - open_orders             : 미체결 주문 추적 리스트
+  - pending_orders          : 07:30 승인됐으나 정규장 개장 대기 중인 주문(Rank 2 승인-제출 분리).
+                              항목: {symbol, side, qty, limit, exchange, confidence, reason, approved_at}
 
 동시성:
   - 같은 프로세스: asyncio.Lock(`_async_lock`) — 코루틴 race 방지
@@ -49,6 +51,7 @@ DEFAULT_STATE: dict = {
     "daily_loss_realized_usd": 0.0,
     "daily_reset_date_et": None,
     "open_orders": [],
+    "pending_orders": [],
 }
 
 _async_lock = asyncio.Lock()
