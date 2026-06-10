@@ -154,14 +154,21 @@ def can_buy(pick: Pick, portfolio, state: dict, constants: dict | None = None) -
                 )
 
         # 9) daily_limit (3가지 합쳐서)
-        buy_count = state.get("daily_buy_count", 0)
+        #   ⚠️ daily_buy_count/amount 는 apply_fill(체결 시)에만 증가하는데, 07:30 사이클은 장 마감
+        #   후라 픽이 전부 pending 큐잉(미체결)된다 → 한 사이클 안에서 state 값이 안 변해 누적 검사가
+        #   무력화된다(precommit review #2/#5/#14). 그래서 exposure cap 처럼 staged_buys 를 합산해
+        #   '이번 사이클에 이미 승인된 BUY'까지 같이 센다(체결되면 apply_fill 이 staged 를 비우므로 이중계산 없음).
+        staged = getattr(portfolio, "staged_buys", None) or {}
+        staged_count = sum(1 for r in staged.values() if r.get("qty", 0) > 0)
+        staged_usd = sum(r.get("usd", 0.0) for r in staged.values())
+        buy_count = state.get("daily_buy_count", 0) + staged_count
         if buy_count >= C["MAX_NEW_BUYS_PER_DAY"]:
             return GateResult(
                 False,
                 f"당일 신규 매수 한도({buy_count}/{C['MAX_NEW_BUYS_PER_DAY']}) 도달",
                 CHECK_DAILY_LIMIT,
             )
-        buy_amt = state.get("daily_buy_amount_usd", 0.0)
+        buy_amt = state.get("daily_buy_amount_usd", 0.0) + staged_usd
         if buy_amt + delta > C["DAILY_TOTAL_BUDGET_USD"]:
             return GateResult(
                 False,

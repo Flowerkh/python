@@ -42,12 +42,17 @@ kis_us_trader/
 │  ├─ universe.py        # 매매 가능 종목 화이트리스트(Phase 1: AAPL) + paper_tradable 24h 캐시.
 │  └─ signals.py         # signal_strength 임계값/분류 단일 진실 소스. classify_strength + compute_vol_factor
 │                        # (P2 vol 정규화, BASELINE_VOL=0.015). daily_trader/tune_thresholds 공유.
-├─ llm_advisor.py        # OpenAI 호출 → {action, confidence, reason} JSON
+├─ llm_advisor.py        # OpenAI 호출 → {action, confidence, reason, flagged} JSON. sanitize_advice(인젝션
+│                        # 방어 + reason 외부 ticker 환각 검증→hold 강등) + macro_bias 사실블록 + aget_advice 비동기.
+├─ sector.py             # compute_macro_bias(SMH 1콜 + breadth) → risk_on/neutral/risk_off/unknown
+│                        # + max_buys_for_bias(N=3/2/0/0). classify_bias 순수함수(단일 진실 소스).
+├─ researcher.py         # decide_parallel(종목당 1콜 asyncio.gather + retry 2 + 실패=hold 폴백, advisor 주입).
 ├─ portfolio.py          # Portfolio 클래스: 잔고 sync(fail-closed) + staged_buys + apply_fill + allocate_budget.
 ├─ safety_gate.py        # 8개 안전 검사 게이트(Pick, GateResult, can_buy/can_sell/evaluate).
-├─ daily_trader.py       # ★현재 메인: 07:30 점검(universe→trend→LLM→safety_gate→승인) + Rank 2 승인-제출
-│                        # 분리(pending 큐잉 → submission_loop 가 미국 개장에 제출). main_loop(07:30) +
-│                        # submission_loop(개장) asyncio.gather 동시 실행.
+├─ daily_trader.py       # ★현재 메인: 07:30 점검 = 전종목 trend 수집 → sector.macro_bias(N 결정) →
+│                        # researcher.decide_parallel → select_picks(conf≥80 BUY 상위 N + SELL) → 픽별
+│                        # safety_gate→승인→Rank 2 제출(pending 큐잉 → submission_loop 개장 제출).
+│                        # main_loop(07:30)+submission_loop(개장) asyncio.gather 동시 실행.
 ├─ tools/
 │  ├─ tune_thresholds.py # signal_strength 임계값 분포/방향성 검증(읽기 전용 분석 도구)
 │  ├─ flipped_day_pnl.py # P1-후속: weak 라벨 개편 flipped-day forward P&L + strong-down EXIT 시뮬
@@ -67,6 +72,11 @@ kis_us_trader/
 │  ├─ test_offhours_order.py  # 장외 주문 거동 실증(07:30 타이밍 결함 확정용)
 │  ├─ test_rank2_pending.py   # Rank 2 pending 라운드트립 + 정규장 제출 통합 smoke
 │  ├─ test_signals.py     # kis.signals(P2 vol 정규화 + classify_strength 회귀) 23 케이스
+│  ├─ test_sector.py      # sector(classify_bias/max_buys_for_bias/compute_macro_bias) 33 케이스, FakeClient
+│  ├─ test_llm_advisor.py # sanitize_advice/foreign_tickers_in_reason 17 케이스(OpenAI 무)
+│  ├─ test_researcher.py  # decide_parallel 15 케이스(가짜 advisor 주입, asyncio)
+│  ├─ test_daily_trader.py# select_picks(macro N 제한 + conf 임계 + 동률 결정성) 10 케이스
+│  ├─ test_universe_health.py # 유니버스 종목 get_price 헬스체크 + paper_tradable 캐시(서버/운영시간 실행)
 │  └─ Telegram.py         # 텔레그램 승인 흐름 단독 검증
 ├─ .state/               # ★런타임 생성. git 제외. state.json 영속화.
 └─ logs/                 # ★런타임 생성. git 제외. daily_trader.{out,err} + cycles-YYYYMM.jsonl.
@@ -124,8 +134,18 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 - [x] daily_trader.py 12단계 흐름 리팩터(_position_qty 전역 삭제, universe 순회, Pick/GateResult)
 - [ ] Phase 1 운영 검증 — AAPL 1종목 1주 운영(staged_buys 사이클 종료 0 리셋 + last_buy_at 갱신 흔적 확인)
 
+### Phase 2 — 반도체 다종목 (코드+오프라인테스트 완료, 운영 검증 대기) ⏳ 2026-06-11
+- [x] kis/universe.py — 반도체 10종목 추가(NVDA/AMD/AVGO/MU/INTC/QCOM/TXN/AMAT/LRCX/TSM, TSM만 NYSE)
+- [x] sector.py — compute_macro_bias(SMH 1콜 + breadth) → risk_on/neutral/risk_off/unknown + max_buys_for_bias(N=3/2/0/0)
+- [x] llm_advisor.py — symbol 의무화 + 인젝션 방어([NEWS]/[EXTERNAL]) + macro_bias 사실블록 + reason 환각(외부 ticker) 검증 → hold 강등(sanitize_advice) + aget_advice 비동기
+- [x] researcher.py — decide_parallel(asyncio.gather + retry 2 + 실패종목 hold 폴백, advisor 주입)
+- [x] daily_trader.py — 전종목 trend 수집 → macro_bias N 결정 → decide_parallel → select_picks(conf≥80 BUY 상위 N + SELL) → 픽별 safety_gate/승인/Rank2
+- [x] test/ 신규: test_sector(33)·test_llm_advisor(17)·test_researcher(15)·test_daily_trader(10) + test_universe_health.py(서버 실행용) + test_safety_gate NVDA→FAKE 갱신
+- [ ] **운영 검증 선결**: 서버에서 `python test/test_universe_health.py`(운영시간) → 10종목 paper_tradable 실측·캐시. 거래불가 종목 paper_tradable=False 로 내릴 것
+- [ ] **잔여 UX**: approval.py 텔레그램 종목별 토글 다이제스트(현재 per-pick 단건 승인으로 기능 대체됨, 실거동 검증 필요)
+- [ ] 2주 라이브 운영 — 화이트리스트 외 ticker 누출 0 + staged_buys cap 정확 차단 + macro_bias N 의도대로
+
 ### 그 이후 (계획)
-- [ ] Phase 2: 반도체 화이트리스트 10종목 + macro_bias + decide_parallel + 다이제스트 토글 UI
 - [ ] Phase 3: weekly_researcher (web_search 매크로 정성 요약 주 1회)
 - [ ] Phase 4: 운영 강화 (dead-man switch, hash chain, prod 이중 잠금, cost cap)
 - [ ] (먼 미래) 실전 전환 — 충분한 검증 후, 사용자 책임 하에만
@@ -134,9 +154,11 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 
 ## 운영 파라미터 (daily_trader.py 상단 상수)
 
-- 종목은 `kis/universe.py` 화이트리스트(Phase 1: AAPL). 전역 SYMBOL 없음(12단계 리팩터 때 삭제).
+- 종목은 `kis/universe.py` 화이트리스트(Phase 2: AAPL + 반도체 10종목 = 11). 전역 SYMBOL 없음.
 - PER_PICK_BUDGET_USD=200.0 (종목당 매수 예산, 수량=예산//현재가)
-- CONFIDENCE_THRESHOLD=80 (이 이상만 승인요청 → moderate≤75라 사실상 strong 만 거래 경로)
+- CONFIDENCE_THRESHOLD=80 (이 이상만 BUY/SELL 후보 → moderate≤75라 사실상 strong 만 거래 경로)
+- macro_bias N(그날 신규 매수 상한): risk_on=3 / neutral=2 / risk_off=0 / unknown=0 (`sector.MAX_BUYS_BY_BIAS`).
+  SELL(청산)은 N 무관 허용. breadth 임계 risk_on≥60% / risk_off≤40% (`sector.py`).
 - CONSTANTS: MAX_POSITION_PER_SYMBOL_USD=2000, MAX_TOTAL_EXPOSURE_USD=10000 등 safety_gate 운영상수
 - RUN_HOUR=7, RUN_MINUTE=30 (매일 점검 시각 KST — 미국장 마감 후)
 - SUBMIT_HOUR_ET=9, SUBMIT_MINUTE_ET=35 (Rank 2 제출 = 개장 직후 ≈ 22:35 KST), PENDING_TTL_HOURS=18
@@ -156,14 +178,27 @@ AMD strong 과발동 동시 throttle, `test_signals.py` 23 케이스), 주문 �
 ODNO 0000039098 BUY 1주 @ $292.25 + 안전 청산 SELL 0000039135 @ $289.35). 텔레그램 메시지 추세+LLM
 사유 풍부화.
 
+최근 완료(2026-06-11): **A(로컬 코드 헬스 게이트)** — venv + test_signals(23)/test_safety_gate(22) 통과,
+tzdata requirements 추가(Windows zoneinfo). **B(Phase 2 코드 골격)** — universe 10종목 + sector.py +
+llm_advisor 강화 + researcher.decide_parallel + daily_trader 통합(macro_bias N + select_picks). 오프라인
+테스트 6스위트 전부 green(test_sector/llm_advisor/researcher/daily_trader 신규). **+ 커밋전 적대적 정밀리뷰
+(워크플로 23 에이전트, 6차원→발견별 적대검증) 15건 수정**: staged 누수 해제(unstage_buy), 일일 cap 사이클내
+누적(staged 합산), loss-limit·dead-man(consecutive_errors) 실배선, 환각 정규식 CJK 조사 대응, ET 주말가드+
+pending dedup, breadth 반도체 한정, SMH 충분성 50, OpenAI timeout. 회귀 test_portfolio 신규 + 7스위트 green.
+상세: DESIGN §9(2026-06-11) 표. ⚠️ **A의 서버 soak(7일) + audit verify, B의 운영 검증은 네이버클라우드 VM
+에서 수행 — 로컬 dev 박스에는 .state/logs 없음.**
+
 남은 후보:
-1. **Phase 2 진입**: 반도체 9종목 화이트리스트 추가(NVDA/AMD/AVGO/MU/INTC/QCOM/TXN/AMAT/LRCX/TSM) +
-   `sector.py`(macro_bias) + `researcher.decide_parallel` + `approval.py` 다이제스트 → 실제 NVDA/AVGO
-   매수 경로 개통. **P2 vol 정규화로 종목 가로 weak throttle 균일 발동 보장(12.3pp 범위)** — 신규
-   종목도 같은 안전 브레이크가 자동 적용. 큰 변화·운영 검증 부담.
-2. **Strong AND-gate 정규화 (P2 잔류)**: Phase 2 운영 중 종목별 strong 빈도 불균일 발견되면 spread/chg
-   도 vol_factor 로 정규화 검토. AMD strong ~64% 는 P2 weak normalization 으로 일차 해소됐으나 완전
-   균일화는 별도.
+1. **Phase 2 운영 검증(선결)**: 서버에서 `test/test_universe_health.py`(운영시간 22:30~ KST) 실행 →
+   반도체 10종목 모의 거래가능 실측. 일부는 모의 매매 불가일 수 있음(KIS 함정 #4) → paper_tradable=False.
+   ⚠️ **배포 순서**: universe 확장이 서버에 배포되면 다음 사이클부터 11종목을 도는다. health 실측 전 라이브
+   배포 금지. macro_bias N(risk_off→0) 이 1차 throttle.
+2. **잔여 UX — approval.py 다이제스트**: 종목별 토글(기본 OFF) 텔레그램 다이제스트. 현재는 per-pick 단건
+   승인으로 다중 픽도 기능 동작(픽 N개=메시지 N개). 친화도 개선이라 실거동 검증과 함께 별도 진행.
+3. **A 운영 soak 마저**: daily_trader 7일 무에러(KST 07:30) + `python -m kis.audit verify`(7줄) + Phase 1
+   staged_buys 0 리셋/last_buy_at 흔적 — 전부 서버 런타임 증거(VM 에서 점검).
+4. **Strong AND-gate 정규화 (P2 잔류)**: Phase 2 운영 중 종목별 strong 빈도 불균일 발견되면 spread/chg
+   도 vol_factor 로 정규화 검토.
 
 ## 안전/보안 규칙 (반드시 지킬 것)
 

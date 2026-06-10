@@ -99,7 +99,8 @@ def _et_days_ago_iso(n):
 
 # ===== 22 케이스 =====
 def test_whitelist_fail():
-    r = can_buy(Pick("NVDA", "buy", 1, 100.0, 90, "x"), FakePortfolio(), fresh_state())
+    # "FAKE" 는 화이트리스트 외(Phase 2 에서 NVDA 등 반도체 편입 후에도 영구 비멤버).
+    r = can_buy(Pick("FAKE", "buy", 1, 100.0, 90, "x"), FakePortfolio(), fresh_state())
     assert r.ok is False and r.check == CHECK_WHITELIST, r
 
 
@@ -243,7 +244,7 @@ def test_sell_holding_exact():
 
 
 def test_sell_whitelist_fail():
-    r = can_sell(Pick("NVDA", "sell", 1, 100.0, 90, "x"), FakePortfolio(), fresh_state())
+    r = can_sell(Pick("FAKE", "sell", 1, 100.0, 90, "x"), FakePortfolio(), fresh_state())
     assert r.ok is False and r.check == CHECK_WHITELIST, r
 
 
@@ -279,6 +280,32 @@ def test_same_cycle_double_pick():
     assert r.ok is False and r.check == CHECK_SYMBOL_CAP, r
 
 
+def test_daily_budget_cumulative_staged():
+    """review #2/#5/#14: 같은 사이클의 다른 종목 staged BUY 가 일일 예산에 누적돼야 함.
+    07:30 사이클은 미체결 큐잉이라 state.daily_buy_amount_usd 가 안 변함 → staged 합산이 유일 누적."""
+    # 다른 두 종목 $250+$250 staged(=count 2, usd 500). AAPL 픽 delta=150 → 500+150=650>600.
+    pf = FakePortfolio(staged={
+        "ZZA": {"qty": 1, "usd": 250.0},
+        "ZZB": {"qty": 1, "usd": 250.0},
+    })
+    r = can_buy(aapl_pick(qty=1, limit=150.0), pf, fresh_state())
+    assert r.ok is False and r.check == CHECK_DAILY_LIMIT, r
+    assert "DAILY_TOTAL_BUDGET" in r.reason, r.reason
+
+
+def test_daily_count_cumulative_staged():
+    """review #2: 같은 사이클 staged BUY 종목 수가 MAX_NEW_BUYS_PER_DAY 에 누적돼야 함."""
+    # 3개 staged(count=3) → 4번째 픽은 당일 매수 종목수 한도(3) 도달. equity 충분히 키워 sector/total 선차단 회피.
+    pf = FakePortfolio(staged={
+        "ZZA": {"qty": 1, "usd": 200.0},
+        "ZZB": {"qty": 1, "usd": 200.0},
+        "ZZC": {"qty": 1, "usd": 200.0},
+    })
+    r = can_buy(aapl_pick(qty=1, limit=100.0), pf, fresh_state())
+    assert r.ok is False and r.check == CHECK_DAILY_LIMIT, r
+    assert "3/3" in r.reason, r.reason
+
+
 if __name__ == "__main__":
     # 캐시 초기화 → AAPL은 시드값(True) 사용
     universe._CACHE.clear()
@@ -305,5 +332,7 @@ if __name__ == "__main__":
     test_partial_constants_merge()
     test_all_checks_pass()
     test_same_cycle_double_pick()
+    test_daily_budget_cumulative_staged()
+    test_daily_count_cumulative_staged()
 
-    print("[OK] safety_gate 22 cases all passed")
+    print("[OK] safety_gate 25 cases all passed")

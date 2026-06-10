@@ -105,6 +105,15 @@ class Portfolio:
         row["qty"] += int(qty)
         row["usd"] += float(qty * price_usd)
 
+    def unstage_buy(self, symbol: str) -> None:
+        """staged_buys 에서 해당 종목 누적을 제거(0 리셋).
+
+        체결로 끝나지 않은 BUY(거절/타임아웃/주문거부/접수-미체결)는 staged 를 남기면 안 된다 —
+        같은 사이클 뒤 픽들의 cap/일일예산 검사가 phantom 노출로 오염되기 때문(precommit review #1).
+        apply_fill 은 체결 시에만 staged 를 비우므로, 비체결 경로는 이 메서드로 명시 해제한다.
+        """
+        self.staged_buys.pop(symbol.upper(), None)
+
     def apply_fill(self, symbol: str, qty: int, side: str, price: float,
                    *, realized_pnl_usd: float | None = None) -> dict:
         """체결 확정 반영. positions/staged_buys/state를 원자적으로 갱신.
@@ -132,6 +141,11 @@ class Portfolio:
             if sym in self.staged_buys:
                 self.staged_buys[sym] = {"qty": 0, "usd": 0.0}
         else:  # sell
+            # 실현손익 미지정 시 보유 평단 대비로 산출(DAILY_LOSS_LIMIT 게이트가 살아있도록 —
+            # 호출부가 realized_pnl_usd 를 안 넘기면 daily_loss_realized_usd 가 영영 0 → 손실 한도
+            # 차단이 죽는다, precommit review #4). 평단 0(미동기화)이면 산출 불가 → None 유지.
+            if realized_pnl_usd is None and cur.get("avg_price", 0) > 0:
+                realized_pnl_usd = (price - cur["avg_price"]) * qty
             new_qty = max(0, cur["qty"] - qty)
             if new_qty == 0:
                 self.positions.pop(sym, None)

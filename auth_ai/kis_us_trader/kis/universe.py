@@ -39,17 +39,20 @@ class Symbol:
 
 SEMI_UNIVERSE_CORE: tuple[Symbol, ...] = (
     Symbol("AAPL", "NASD", "megacap_tech", True),
-    # Phase 2 추가 예정:
-    # Symbol("NVDA", "NASD", "semiconductor", True),
-    # Symbol("AMD",  "NASD", "semiconductor", True),
-    # Symbol("AVGO", "NASD", "semiconductor", True),
-    # Symbol("MU",   "NASD", "semiconductor", True),
-    # Symbol("INTC", "NASD", "semiconductor", True),
-    # Symbol("QCOM", "NASD", "semiconductor", True),
-    # Symbol("TXN",  "NASD", "semiconductor", True),
-    # Symbol("AMAT", "NASD", "semiconductor", True),
-    # Symbol("LRCX", "NASD", "semiconductor", True),
-    # Symbol("TSM",  "NYSE", "semiconductor", True),
+    # Phase 2 — 반도체 10종목 (TSM 만 NYSE, 나머지 NASDAQ).
+    #   paper_tradable 시드값은 True 지만, 첫 가동 시 test/test_universe_health.py 로
+    #   10종목 get_price 실측 후 캐시(.state/universe_cache.json)에 반영할 것.
+    #   모의계좌에서 일부 종목이 거래 불가일 수 있다(CLAUDE.md KIS 함정 #4).
+    Symbol("NVDA", "NASD", "semiconductor", True),
+    Symbol("AMD",  "NASD", "semiconductor", True),
+    Symbol("AVGO", "NASD", "semiconductor", True),
+    Symbol("MU",   "NASD", "semiconductor", True),
+    Symbol("INTC", "NASD", "semiconductor", True),
+    Symbol("QCOM", "NASD", "semiconductor", True),
+    Symbol("TXN",  "NASD", "semiconductor", True),
+    Symbol("AMAT", "NASD", "semiconductor", True),
+    Symbol("LRCX", "NASD", "semiconductor", True),
+    Symbol("TSM",  "NYSE", "semiconductor", True),
 )
 
 # import 시점 검증
