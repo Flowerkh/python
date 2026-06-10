@@ -307,12 +307,12 @@ curl -s ifconfig.me
 
 이 가이드 따라 마이그레이션 완료 = 다음 9개 전부 ✅
 
-- [ ] 네이버클라우드 VM 생성 (Micro, Ubuntu 22.04, 30GB SSD)
-- [ ] **공인 IP 고정 할당**
-- [ ] **KIS Developers에서 IP 변경 신청·승인**
-- [ ] Python 3.11 + git + 가상환경 + `pip install -r requirements.txt`
-- [ ] `.env` scp 전송 + `chmod 600`
-- [ ] `python test/test_balance_parse.py` → `rt_cd=0`
-- [ ] systemd `kis-trader.service` 등록 + enable
-- [ ] 텔레그램 시작 메시지 도착 확인
-- [ ] 다음 07:30 KST 사이클 정상 발화 확인 (1일 후)
+- [X] 네이버클라우드 VM 생성 (Micro, Ubuntu 22.04, 30GB SSD)
+- [X] **공인 IP 고정 할당**
+- [X] **KIS Developers에서 IP 변경 신청·승인**
+- [X] Python 3.11 + git + 가상환경 + `pip install -r requirements.txt`
+- [X] `.env` scp 전송 + `chmod 600`
+- [X] `python test/test_balance_parse.py` → `rt_cd=0`
+- [X] systemd `kis-trader.service` 등록 + enable
+- [X] 텔레그램 시작 메시지 도착 확인
+- [X] 다음 07:30 KST 사이클 정상 발화 확인 (1일 후)

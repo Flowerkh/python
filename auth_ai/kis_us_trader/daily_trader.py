@@ -27,6 +27,7 @@ universe → trend → LLM → safety_gate(8 검사) → Portfolio staged → �
 import asyncio
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -34,7 +35,8 @@ from telegram.ext import Application, CallbackQueryHandler, ContextTypes
 
 from kis import universe
 from kis.audit import log_cycle
-from kis.client import KISClient
+from kis.client import KISClient, parse_balance_positions
+from kis.signals import classify_strength
 from kis.state import is_paused, load_state, update_state
 from llm_advisor import get_advice
 from portfolio import Portfolio
@@ -47,6 +49,12 @@ CONFIDENCE_THRESHOLD = 80      # LLM 확신도 임계
 APPROVAL_TIMEOUT = 1800        # 텔레그램 승인 대기(초). 무응답 시 자동 거절(30분)
 RUN_HOUR = 7                   # 매일 실행 시각(한국시간 24h). 미국 정규장 마감 직후.
 RUN_MINUTE = 30
+# Rank 2(승인-제출 분리): 07:30 승인 → 미국 정규장 개장 직후 제출. 09:35 ET = ~22:35 KST(DST)/23:35(표준).
+SUBMIT_HOUR_ET = 9
+SUBMIT_MINUTE_ET = 35
+PENDING_TTL_HOURS = 18         # 승인 후 이 시간 내 미제출 시 만료(주말/장애로 stale된 승인 폐기)
+
+# signal_strength 임계값/분류 로직은 kis/signals.py (단일 진실 소스, tune_thresholds 와 공유).
 
 # safety_gate가 사용하는 운영 상수. DEFAULT_CONSTANTS와 동일하지만 명시적으로 한 번 더 보임.
 CONSTANTS = {
@@ -66,6 +74,8 @@ PER_PICK_BUDGET_USD = 200.0
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+ET = ZoneInfo("America/New_York")  # 미국 정규장 시간 판정용(DST 자동 처리)
+
 
 def compute_trend(closes: list[float]) -> dict:
     """일봉 종가 리스트로 추세 지표를 계산해 dict로 반환."""
@@ -78,22 +88,16 @@ def compute_trend(closes: list[float]) -> dict:
     sma5, sma20, sma60 = sma(5), sma(20), sma(60)
     change_5d_pct = round((price / closes[-6] - 1) * 100, 2) if n >= 6 else None
 
-    # 추세 강도 라벨 (코드 기준 결정적 산출 — LLM 의 모호한 자율 판단을 줄임)
-    #   weak     : SMA5/20 스프레드 < 0.3% 이고 5일 변동 < 1% → 사실상 횡보
-    #   strong   : 스프레드 >= 1.0% 이고 5일 변동 >= 3% → 명확한 추세
-    #   moderate : 그 사이
-    # 임계값은 출발점일 뿐 운영 데이터 보고 조정 필요.
+    # 추세 강도 라벨 (kis.signals.classify_strength — daily_trader/tune_thresholds 공유).
+    #   ⚠️ '추세 강도/변동성' 라벨이지 '방향' 신호가 아니다. 방향(매수/매도)은 LLM 이
+    #      price·sma5·sma20·change_5d_pct 데이터로만 판단한다(llm_advisor SYSTEM_PROMPT 참고).
+    #   임계값 정의/근거는 kis/signals.py, 분포 분석은 tools/tune_thresholds.py 참고.
     if sma5 is None or sma20 is None or change_5d_pct is None:
         signal_strength = "weak"  # 데이터 부족 시 보수적
     else:
         spread_pct = abs(sma5 - sma20) / price * 100
         chg = abs(change_5d_pct)
-        if spread_pct < 0.3 and chg < 1.0:
-            signal_strength = "weak"
-        elif spread_pct >= 1.0 and chg >= 3.0:
-            signal_strength = "strong"
-        else:
-            signal_strength = "moderate"
+        signal_strength = classify_strength(spread_pct, chg)
 
     return {
         "price": round(price, 2),
@@ -170,6 +174,10 @@ async def daily_cycle(bot):
                 log_cycle("error", {"symbol": sym, "error": err})
             except Exception:
                 pass
+            try:
+                await bot.send_message(chat_id=CHAT_ID, text=f"⚠️ {sym} 사이클 오류: {err}")
+            except Exception:
+                pass
 
 
 async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch: str) -> None:
@@ -200,16 +208,20 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         "confidence": conf,
         "reason": reason,
     }
+    trend_ctx = (
+        f"📈 signal={trend['signal_strength']} | 현재 ${trend['price']} / SMA20 ${trend['sma20']} "
+        f"/ SMA5>SMA20={trend['sma5_above_sma20']} / 5일 {trend['change_5d_pct']}%"
+    )
 
     # 6) hold / low_confidence 조기 종료
     if action == "hold":
-        await bot.send_message(chat_id=CHAT_ID, text=f"😴 {sym} 관망(hold). 사유: {reason}")
+        await bot.send_message(chat_id=CHAT_ID, text=f"😴 {sym} 관망(hold)\n{trend_ctx}\n사유: {reason}")
         log_cycle("cycle_skipped", {**base_payload, "reason_skip": "hold"})
         return
     if conf < CONFIDENCE_THRESHOLD:
         await bot.send_message(
             chat_id=CHAT_ID,
-            text=f"{sym} 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.")
+            text=f"{sym} 신호 {action}이나 확신도 {conf} < {CONFIDENCE_THRESHOLD} → 건너뜀.\n{trend_ctx}\n사유: {reason}")
         log_cycle("cycle_skipped", {**base_payload, "reason_skip": "low_confidence"})
         return
 
@@ -262,28 +274,80 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
                                     "reason_skip": f"user_{decision}"})
         return
 
-    # 11) 주문 실행 (텔레그램 ✅/⚠️ 알림은 KISClient.order가 자동 발송)
-    res = client.order(sym, action, qty, limit, exch)
-    rt = res.get("rt_cd")
-    order_payload = {
-        **base_payload,
-        "qty": qty,
-        "limit": limit,
-        "rt_cd": rt,
-        "msg1": res.get("msg1", ""),
-        "odno": (res.get("output") or {}).get("ODNO"),
-    }
-
-    # 12) apply_fill (state 갱신 단일 지점) 또는 consecutive_errors 누적
-    if rt == "0":
-        pf.apply_fill(sym, qty, action, limit)
+    # 11) Rank 2(승인-제출 분리): 07:30은 정규장 마감 후라 즉시주문이 거부됨(40580000 '장종료').
+    #   정규장 중이면(드묾·수동 실행) 즉시 제출, 아니면 pending 으로 큐잉 → submission_loop 가
+    #   다음 미국 개장(~22:35 KST)에 제출. 배경: docs/ORDER_TIMING_ISSUE.md
+    order_payload = {**base_payload, "qty": qty, "limit": limit}
+    if us_regular_session_open():
+        await _place_and_confirm(bot, client, pf, sym, action, qty, limit, exch, order_payload)
+    else:
+        po = {"symbol": sym, "side": action, "qty": qty, "limit": limit, "exchange": exch,
+              "confidence": conf, "reason": reason,
+              "approved_at": datetime.now(ET).isoformat(timespec="seconds")}
+        update_state(lambda s: s.setdefault("pending_orders", []).append(po))
         await bot.send_message(
             chat_id=CHAT_ID,
-            text=f"📊 {sym} {'매수' if action=='buy' else '매도'} 체결 — 보유 {pf.positions.get(sym, {}).get('qty', 0)}주")
-        log_cycle("cycle_complete", order_payload)
-    else:
+            text=(f"✅ {sym} {'매수' if action=='buy' else '매도'} {qty}주 @ ${limit} 승인 → "
+                  f"다음 미국 개장(~22:35 KST)에 제출 예정."))
+        log_cycle("order_queued", order_payload)
+
+
+def us_regular_session_open(now_et: datetime | None = None) -> bool:
+    """미국 정규장(평일 09:30~16:00 ET) 개장 여부. ZoneInfo로 DST 자동 처리.
+
+    ⚠️ 미국 공휴일/반장일은 보지 않는다(현 07:30 KST 스케줄은 항상 정규장 밖이라 무관).
+    정규장 외에는 KIS가 주문을 거부(40580000 '장종료')하므로 주문 보류 판단에 쓴다.
+    """
+    now = now_et or datetime.now(ET)
+    if now.weekday() >= 5:  # 토(5)/일(6)
+        return False
+    open_t = now.replace(hour=9, minute=30, second=0, microsecond=0)
+    close_t = now.replace(hour=16, minute=0, second=0, microsecond=0)
+    return open_t <= now < close_t
+
+
+def _broker_held_qty(client: KISClient, exch: str, sym: str) -> int | None:
+    """KIS 잔고에서 종목 보유수량 조회. 실패 시 None(체결 확인 불가)."""
+    try:
+        raw = client.get_balance(exch)
+    except Exception:
+        return None
+    if not isinstance(raw, dict) or raw.get("rt_cd") != "0":
+        return None
+    return int(parse_balance_positions(raw).get(sym, {}).get("qty", 0))
+
+
+async def _place_and_confirm(bot, client: KISClient, pf: Portfolio, sym: str, side: str,
+                             qty: int, limit: float, exch: str, payload: dict) -> None:
+    """주문 전송 + 잔고 재조회로 실제 체결 확인 후에만 apply_fill (phantom-fill 방지).
+    ⚠️ 정규장 중에만 호출할 것 — 정규장 외엔 KIS가 거부(40580000)."""
+    pre_qty = int(pf.positions.get(sym, {}).get("qty", 0))
+    res = client.order(sym, side, qty, limit, exch)
+    rt = res.get("rt_cd")
+    op = {**payload, "rt_cd": rt, "msg1": res.get("msg1", ""),
+          "odno": (res.get("output") or {}).get("ODNO")}
+    if rt != "0":
         update_state(lambda s: s.update({"consecutive_errors": s.get("consecutive_errors", 0) + 1}))
-        log_cycle("cycle_error", order_payload)
+        log_cycle("cycle_error", op)
+        return
+    # rt_cd=="0"은 '접수'일 뿐 '체결'이 아니다 → 잔고 재조회로 실제 체결 확인 후에만 반영.
+    await asyncio.sleep(3)  # 체결이 잔고에 반영될 시간
+    post_qty = _broker_held_qty(client, exch, sym)
+    if side == "buy":
+        confirmed = post_qty is not None and post_qty >= pre_qty + qty
+    else:
+        confirmed = post_qty is not None and post_qty <= pre_qty - qty
+    if confirmed:
+        pf.apply_fill(sym, qty, side, limit)
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=f"📊 {sym} {'매수' if side=='buy' else '매도'} 체결 — 보유 {pf.positions.get(sym, {}).get('qty', 0)}주")
+        log_cycle("cycle_complete", op)
+    else:
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=f"🟡 {sym} 주문 접수(rt_cd=0)됐으나 체결 미확인(잔고 변화 없음) → 보유 반영 보류. ODNO={op['odno']}")
+        log_cycle("cycle_accepted_unfilled", {**op, "pre_qty": pre_qty, "post_qty": post_qty})
 
 
 def seconds_until_next_run() -> float:
@@ -294,11 +358,101 @@ def seconds_until_next_run() -> float:
     return (target - now).total_seconds()
 
 
+def seconds_until_submit_window(now_et: datetime | None = None) -> float:
+    """다음 제출 시각(평일 09:35 ET = 미국 개장 5분 후)까지 초. ZoneInfo로 DST 자동 처리."""
+    now = now_et or datetime.now(ET)
+    target = now.replace(hour=SUBMIT_HOUR_ET, minute=SUBMIT_MINUTE_ET, second=0, microsecond=0)
+    if target <= now:
+        target += timedelta(days=1)
+    while target.weekday() >= 5:  # 주말 건너뜀
+        target += timedelta(days=1)
+    return (target - now).total_seconds()
+
+
+async def _submit_one(bot, client: KISClient, pf: Portfolio, po: dict) -> None:
+    """pending 1건: 제출 직전 재검증(보유/safety_gate) 후 _place_and_confirm 으로 제출."""
+    sym = po["symbol"]
+    side = po["side"]
+    qty = po["qty"]
+    limit = po["limit"]
+    exch = po.get("exchange", "NASD")
+    conf = po.get("confidence", 0)
+    reason = po.get("reason", "")
+    if side == "sell" and pf.positions.get(sym, {}).get("qty", 0) <= 0:
+        await bot.send_message(chat_id=CHAT_ID, text=f"{sym} 보유 없음 → 매도 제출 취소.")
+        log_cycle("pending_skipped", {**po, "reason_skip": "no_position"})
+        return
+    pick = Pick(symbol=sym, side=side, qty=qty, limit_price=limit, confidence=conf, reason=reason)
+    result = evaluate(pick, pf, pf.state, CONSTANTS)
+    if not result.ok:
+        await bot.send_message(chat_id=CHAT_ID, text=f"🛡️ {sym} 제출 직전 차단({result.check}): {result.reason}")
+        log_cycle("pending_blocked", {**po, "check": result.check, "reason_skip": result.reason})
+        return
+    payload = {"symbol": sym, "action": side, "qty": qty, "limit": limit,
+               "confidence": conf, "reason": reason}
+    await _place_and_confirm(bot, client, pf, sym, side, qty, limit, exch, payload)
+
+
+async def submit_open_orders(bot) -> None:
+    """미국 개장 직후 호출 — pending_orders 를 검증·제출(Rank 2). 1회성: 처리 후 큐 비움."""
+    pending = list(load_state().get("pending_orders") or [])
+    if not pending:
+        return
+    if not us_regular_session_open():
+        print("  [submit] 정규장 외 — 제출 보류")
+        return
+    print(f"[{datetime.now():%Y-%m-%d %H:%M}] pending {len(pending)}건 제출 시작")
+    client = KISClient()
+    pf = Portfolio(client)
+    now_et = datetime.now(ET)
+    for po in pending:
+        try:
+            approved = datetime.fromisoformat(po.get("approved_at", ""))
+            if (now_et - approved).total_seconds() > PENDING_TTL_HOURS * 3600:
+                await bot.send_message(
+                    chat_id=CHAT_ID,
+                    text=f"⏳ {po.get('symbol')} 예약 만료(승인 {po.get('approved_at')}) → 제출 안 함.")
+                log_cycle("pending_expired", po)
+                continue
+            await _submit_one(bot, client, pf, po)
+        except Exception as e:
+            err = f"{type(e).__name__}: {e}"
+            print(f"  [submit {po.get('symbol')} 오류] {err}")
+            try:
+                update_state(lambda s: s.update({"consecutive_errors": s.get("consecutive_errors", 0) + 1}))
+            except Exception:
+                pass
+            try:
+                await bot.send_message(chat_id=CHAT_ID, text=f"⚠️ {po.get('symbol')} 제출 오류: {err}")
+            except Exception:
+                pass
+    update_state(lambda s: s.update({"pending_orders": []}))  # 1회성 처리 완료 → 비움
+
+
+async def submission_loop(bot) -> None:
+    """미국 개장 직후 pending 제출 스케줄 루프 (main_loop 와 동시 실행)."""
+    while True:
+        wait = seconds_until_submit_window()
+        print(f"[submit] 다음 제출 창까지 {wait/3600:.1f}시간 대기...")
+        await asyncio.sleep(wait)
+        try:
+            await submit_open_orders(bot)
+        except Exception as e:
+            err = f"{type(e).__name__}: {e}"
+            print(f"  [submit 전체 오류] {err}")
+            try:
+                await bot.send_message(chat_id=CHAT_ID, text=f"⚠️ 제출 루프 오류: {err}")
+            except Exception:
+                pass
+        await asyncio.sleep(60)  # 같은 분에 중복 실행 방지
+
+
 async def main_loop(app):
     bot = app.bot
     await bot.send_message(
         chat_id=CHAT_ID,
-        text=f"🚀 하루1회 자동매매 시작 (모의). 매일 {RUN_HOUR:02d}:{RUN_MINUTE:02d} KST 점검 (미국장 마감 후).")
+        text=(f"🚀 하루1회 자동매매 시작 (모의). 매일 {RUN_HOUR:02d}:{RUN_MINUTE:02d} KST 점검"
+              f"(미국장 마감 후) → 승인 시 다음 개장(~22:35 KST)에 제출."))
     print("=== 하루 1회 자동매매 시작 ===")
     while True:
         wait = seconds_until_next_run()
@@ -338,7 +492,7 @@ def main():
         await app.start()
         await app.updater.start_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
         try:
-            await main_loop(app)
+            await asyncio.gather(main_loop(app), submission_loop(app.bot))
         finally:
             await app.updater.stop()
             await app.stop()

@@ -99,6 +99,26 @@ Phase 1 운영 검증 기간(7일) 동안 매일 한국시간 **07:35 이후**(d
   python -c "from kis.state import update_state; update_state(lambda s: s.update({'paused_until': None, 'consecutive_errors': 0}))"
   ```
 
+### 시나리오 F · 종목 사이클 오류 (LLM/KIS 등 예외)
+```
+⚠️ AAPL 사이클 오류: AuthenticationError: Error code: 401 - ...
+```
+- 종목 처리 중 예외 발생 (LLM 인증 실패, KIS 조회 실패 등). 해당 종목만 건너뛰고 다음 종목/사이클은 계속됨.
+- audit log: `event: error, symbol, error`
+- state.json: `consecutive_errors += 1` (3 누적 시 자동 24h pause → 시나리오 E)
+- 처치: 메시지의 예외 타입으로 원인 판별. `AuthenticationError 401`이면 §3.7 참고.
+
+### 시나리오 G · 승인 → 개장 대기 → 제출 (Rank 2 승인-제출 분리)
+07:30 승인(시나리오 B) 후 곧바로 주문되지 않고, **다음 미국 개장(~22:35 KST)** 에 제출된다(07:30은 정규장 마감 후라 즉시주문이 거부되기 때문).
+```
+✅ AAPL 매수 1주 @ $303.05 승인 → 다음 미국 개장(~22:35 KST)에 제출 예정.   ← 07:30 승인 직후
+📊 AAPL 매수 체결 — 보유 1주                                              ← ~22:35 KST 개장 제출+체결
+```
+- 07:30 승인 시 `state.pending_orders`에 저장, audit `order_queued`. ~22:35 KST `submission_loop`가
+  제출 → `cycle_complete`(체결) 또는 `🟡 체결 미확인`(`cycle_accepted_unfilled`, 갭으로 미체결 — 가짜 포지션 안 만듦).
+- 변형: 제출 직전 차단 `🛡️ 제출 직전 차단`(`pending_blocked`) / 만료 `⏳ 예약 만료`(18h 초과, `pending_expired`) /
+  보유 없어 매도 취소(`pending_skipped`). 배경: docs/ORDER_TIMING_ISSUE.md
+
 ---
 
 ## 2. 점검 명령 (정상 동작 확인)
@@ -121,9 +141,9 @@ tail -30 /opt/kis_us_trader_repo/auth_ai/kis_us_trader/logs/daily_trader.out
     [AAPL] LLM: buy (확신도 88) - <사유>
   다음 실행까지 23.9시간 대기...
   ```
-  - `signal=weak | moderate | strong` 은 `compute_trend()` 가 스프레드/5일 변동 임계값으로 결정한 추세 강도 라벨.
-  - `signal=weak` 이면 LLM 프롬프트 룰상 강제로 `hold` + confidence ≤ 50 → 시나리오 A 로 흐름.
-  - `signal=strong` 이고 LLM 도 `buy` 면 confidence 가 높게 나오기 쉬워 시나리오 B 로 흐름.
+  - `signal=weak | moderate | strong` 은 `kis.signals.classify_strength` 가 산출한 추세 강도/변동성 라벨(**방향 신호 아님**). weak=score(spread%+|chg%|)<3.5, strong=spread%≥1 & |chg%|≥3.
+  - `signal=weak` 이면 LLM 프롬프트 룰상 강제로 `hold` + confidence ≤ 50 → 시나리오 A. weak 은 설계상 **~30% 발동**(보수 브레이크).
+  - `signal=strong` 은 `CONFIDENCE_THRESHOLD=80` 을 넘길 수 있는 유일한 밴드 → 데이터가 한 방향을 충분히 뒷받침하면 시나리오 B.
 - ❌ 이상:
   - "일일 사이클 시작" 줄 자체가 없으면 시각/스케줄러 문제.
   - Python traceback이 있으면 §3.2 참고.
@@ -185,10 +205,10 @@ sudo journalctl -u kis-trader -n 100 --no-pager
 | Telegram 401/403 | 봇 토큰 무효화 | BotFather에서 토큰 재발급 후 `.env` 갱신 |
 
 ### 3.3 사이클은 발화했는데 hold만 계속 나옴
-- 정상 가능성 큼 — LLM이 보수적 판단 시 hold 권장.
-- 먼저 `signal=...` 라벨을 확인:
-  - `signal=weak` 가 매일 찍히면 추세 임계값(`compute_trend()` 스프레드<0.3% AND |chg|<1%)이 현재 시장 변동성에 비해 너무 보수적일 수 있음. 임계값을 0.2%/0.5% 등으로 낮춰 `moderate` 비율을 늘릴지 검토.
-  - `signal=moderate/strong` 인데도 매일 hold 면 LLM 자체가 보수적인 것 → Phase 2 진입 후 macro_bias 추가로 신호 다양화.
+- 상당 부분 정상 — weak 은 설계상 ~30% 발동(LLM 에 hold 강제하는 보수 브레이크)이고, `CONFIDENCE_THRESHOLD=80` 상 strong 만 거래 문턱을 넘으므로 hold/skip 이 흔하다.
+- `signal=...` 라벨로 구분:
+  - `signal=weak` 비중이 과도하면 `kis/signals.py` 의 `WEAK_SCORE_CUT`(현 3.5, AAPL 기준)이 현재 변동성 대비 높을 수 있음 → `tools/tune_thresholds.py` 로 분포 재확인 후 조정 검토. (구 AND-gate 시절엔 반대로 weak 이 ~1.7%만 떠 브레이크가 死문자였음 — docs/SIGNAL_STRENGTH_ANALYSIS.md)
+  - `signal=moderate/strong` 인데도 매일 hold/skip 이면 LLM 이 보수적이거나 confidence<80 으로 걸러진 것. 라벨은 '방향' 신호가 아니라(분석상 방향 예측력 없음) 정상 범주.
 - 7일 전부 hold 라도 audit log에 `signal_strength` 가 박혀 있어 사후 회고 가능.
 
 ### 3.4 `consecutive_errors`가 누적되고 있음
@@ -212,6 +232,12 @@ cat .state/state.json   # paused_until: null 확인
 2. 깨진 위치 확인: 출력에 `line N: ...` 형식 사유 표시됨
 3. 그 줄이 사람 손에 닿은 적 없는데 깨졌다면 파일시스템/디스크 이슈 가능 — VM 스냅샷 복구 검토
 4. 정상 케이스: 운영 중에는 절대 발생하지 않아야 함. 발생 자체가 적신호.
+
+### 3.7 `⚠️ 사이클 오류: AuthenticationError ... 401` (OpenAI 키)
+- `.env`의 `OPENAI_API_KEY`가 무효(폐기/오타/서버-로컬 불일치).
+- 확인: `grep OPENAI_API_KEY .env` 로 키 출처 점검. `.venv/bin/python llm_advisor.py` 단독 실행으로 키 유효성 즉시 검증.
+- ⚠️ `.env` 수정 후엔 반드시 `sudo systemctl restart kis-trader` — 떠 있는 프로세스는 시작 시점의 키를 메모리에 들고 있어 재시작 전까지 안 바뀜.
+- `OPENAI_MODEL`도 유효한 모델명인지 확인 (잘못되면 `model_not_found`).
 
 ---
 

@@ -39,20 +39,30 @@ kis_us_trader/
 │  ├─ rate_limiter.py    # 슬라이딩 윈도우 호출 제한 (sync acquire + async acquire_async)
 │  ├─ state.py           # .state/state.json 영속화. portalocker + asyncio.Lock + ET 자정 리셋.
 │  ├─ audit.py           # logs/cycles-YYYYMM.jsonl. SHA-256 hash chain + verify_chain.
-│  └─ universe.py        # 매매 가능 종목 화이트리스트(Phase 1: AAPL) + paper_tradable 24h 캐시.
+│  ├─ universe.py        # 매매 가능 종목 화이트리스트(Phase 1: AAPL) + paper_tradable 24h 캐시.
+│  └─ signals.py         # signal_strength 임계값/분류 단일 진실 소스(classify_strength). daily_trader/tune_thresholds 공유.
 ├─ llm_advisor.py        # OpenAI 호출 → {action, confidence, reason} JSON
 ├─ portfolio.py          # Portfolio 클래스: 잔고 sync(fail-closed) + staged_buys + apply_fill + allocate_budget.
 ├─ safety_gate.py        # 8개 안전 검사 게이트(Pick, GateResult, can_buy/can_sell/evaluate).
-├─ daily_trader.py       # ★현재 메인: 12단계 흐름(universe→trend→LLM→safety_gate→승인→주문→apply_fill).
-├─ docs/                 # 설계·배포 문서
-│  ├─ DESIGN.md          # 다종목/반도체 섹터 확장 설계 + Phase 0~4 로드맵 + 검증 시나리오
-│  └─ DEPLOY_NAVER_CLOUD.md  # 네이버클라우드 배포 절차 (Python 3.11, sparse-checkout, systemd 등)
+├─ daily_trader.py       # ★현재 메인: 07:30 점검(universe→trend→LLM→safety_gate→승인) + Rank 2 승인-제출
+│                        # 분리(pending 큐잉 → submission_loop 가 미국 개장에 제출). main_loop(07:30) +
+│                        # submission_loop(개장) asyncio.gather 동시 실행.
+├─ tools/
+│  └─ tune_thresholds.py # signal_strength 임계값 분포/방향성 검증(읽기 전용 분석 도구)
+├─ docs/                 # 설계·운영 문서
+│  ├─ DESIGN.md          # 다종목/반도체 섹터 확장 설계 + Phase 0~4 로드맵 + §9 변경이력
+│  ├─ DEPLOY_NAVER_CLOUD.md  # 네이버클라우드 배포 절차 (Python 3.11, sparse-checkout, systemd 등)
+│  ├─ DAILY_CHECK.md     # 매일 아침 점검 체크리스트 + 텔레그램 시나리오 A~G + 트러블슈팅
+│  ├─ SIGNAL_STRENGTH_ANALYSIS.md  # signal_strength 2년 분석 + P1 백테스트(throttle이지 알파 아님)
+│  └─ ORDER_TIMING_ISSUE.md  # 07:30=정규장 마감 후 결함 + Rank 0/2 수정 기록
 ├─ test/                 # 검증용 단독 스크립트. 프로젝트 루트에서 실행.
 │  ├─ test_order.py       # 주문/취소 API 단독 검증(매수 접수 → 즉시 취소)
 │  ├─ test_balance_parse.py  # 잔고 API 응답 캡처 + parse_balance_positions 9케이스 fail-closed
 │  ├─ test_roundtrip.py   # AAPL 1주 BUY → 30초 → SELL 왕복 + 잔고 폴링
 │  ├─ test_safety_gate.py # 8개 안전 검사 단위 검증 22 케이스(네트워크 무, mock Portfolio)
 │  ├─ test_trader.py      # 일봉조회 + 추세지표 계산 단독 검증
+│  ├─ test_offhours_order.py  # 장외 주문 거동 실증(07:30 타이밍 결함 확정용)
+│  ├─ test_rank2_pending.py   # Rank 2 pending 라운드트립 + 정규장 제출 통합 smoke
 │  └─ Telegram.py         # 텔레그램 승인 흐름 단독 검증
 ├─ .state/               # ★런타임 생성. git 제외. state.json 영속화.
 └─ logs/                 # ★런타임 생성. git 제외. daily_trader.{out,err} + cycles-YYYYMM.jsonl.
@@ -70,7 +80,11 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 2. **모의/실전 TR ID 다름**: `config.py`의 TR_BUY/TR_SELL/TR_BALANCE에서 env로 분기.
    - 미국 매수 모의 `VTTT1002U`/실전 `TTTT1002U`, 매도 모의 `VTTT1001U`/실전 `TTTT1006U`.
 3. **미국 거래소 운영시간(한국시간)**: 23:30~06:00 (썸머타임 22:30~05:00).
-   - 운영시간 외 주문/현재가 API는 에러 가능. **일봉(dailyprice)은 휴장에도 조회됨**(확인됨).
+   - 운영시간 외 현재가 API는 에러 가능. **일봉(dailyprice)/잔고는 휴장에도 조회됨**(확인됨).
+   - ⚠️ **07:30 KST 사이클은 정규장 마감 후**라 정규주문이 거부됨(`rt_cd=1 / 40580000 "장종료"`, 모의도 동일).
+     → daily_trader 는 승인된 주문을 `state.pending_orders`에 큐잉하고 **미국 개장 직후 제출**(Rank 2).
+     배경/수정: docs/ORDER_TIMING_ISSUE.md.
+   - KIS 미국 **예약주문**도 지원(접수 `VTTT3014U`/`order-resv`, 단 모의 조회 불가) — 현재 미사용, 향후 옵션.
 4. **모의투자는 일부 종목만 매매 가능**. 테스트는 AAPL 등 대형주로.
 5. **토큰**: 약 24h 유효. 재발급 횟수 제한 있으므로 캐시 재사용(이미 auth.py가 처리).
 6. **호출 제한**: 초당 제한 있음(rate_limiter.py로 보수적 관리). 환경별 분기: paper=1회/초, prod=5회/초.
@@ -116,19 +130,25 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 
 ## 운영 파라미터 (daily_trader.py 상단 상수)
 
-- SYMBOL=AAPL, EXCHANGE=NASD
-- DAILY_BUDGET_USD=200 (금액기준 매수, 수량=예산//현재가)
-- CONFIDENCE_THRESHOLD=80 (이 이상만 승인요청)
-- MAX_POSITION_USD=2000 (최대 보유금액 한도)
-- RUN_HOUR=7, RUN_MINUTE=30 (매일 점검 시각, 한국시간 — 미국장 마감 후)
+- 종목은 `kis/universe.py` 화이트리스트(Phase 1: AAPL). 전역 SYMBOL 없음(12단계 리팩터 때 삭제).
+- PER_PICK_BUDGET_USD=200.0 (종목당 매수 예산, 수량=예산//현재가)
+- CONFIDENCE_THRESHOLD=80 (이 이상만 승인요청 → moderate≤75라 사실상 strong 만 거래 경로)
+- CONSTANTS: MAX_POSITION_PER_SYMBOL_USD=2000, MAX_TOTAL_EXPOSURE_USD=10000 등 safety_gate 운영상수
+- RUN_HOUR=7, RUN_MINUTE=30 (매일 점검 시각 KST — 미국장 마감 후)
+- SUBMIT_HOUR_ET=9, SUBMIT_MINUTE_ET=35 (Rank 2 제출 = 개장 직후 ≈ 22:35 KST), PENDING_TTL_HOURS=18
 - APPROVAL_TIMEOUT=1800 (승인 무응답 30분 → 자동 거절)
+- signal_strength 임계값은 `kis/signals.py`(WEAK_SCORE_CUT=3.5 등). 근거: docs/SIGNAL_STRENGTH_ANALYSIS.md.
 
-## 다음 할 일
+## 다음 할 일 (2026-06 기준 — 상세 이력은 DESIGN.md §9)
 
-1. **모의주문 단독 테스트** 작성/실행: 1주를 현재가에서 먼 지정가로 접수 →
-   rt_cd=0 확인 → 즉시 취소. (장중에 실행. 주문 API/거래소코드/TR ID 검증 목적)
-2. 잔고조회로 보유수량 실제 동기화 (지금은 메모리 변수로만 추적).
-3. daily_trader 장중 전체 흐름 1회 실행 확인.
+최근 완료: signal_strength 분석·개편(kis/signals.py, weak score<3.5) + P1 백테스트(방향 엣지 없음,
+throttle이지 알파 아님), 주문 타이밍 결함 발견·실증(07:30=장종료) + Rank 0 안전패치 + **Rank 2 승인-제출
+분리**(거래 경로 완성). 텔레그램 메시지 추세+LLM 사유 풍부화.
+
+남은 후보:
+1. **Rank 2 정규장 제출 실증**: `test/test_rank2_pending.py RUN` (정규장 시간) → 제출→체결 end-to-end 확인.
+2. **P1-후속**: flipped-day P&L 측정(SIGNAL_STRENGTH_ANALYSIS.md).
+3. **P2**: 종목별/변동성 정규화 임계값(Phase 2 반도체 진입 시).
 
 ## 안전/보안 규칙 (반드시 지킬 것)
 
