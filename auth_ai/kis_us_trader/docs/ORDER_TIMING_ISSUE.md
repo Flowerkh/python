@@ -1,8 +1,9 @@
 # 주문 타이밍 문제 (07:30 KST = 정규장 마감 후)
 
-> 상태: 확인됨 + 실증 확정(2026-06-09) → **Rank 0 + Rank 2 구현 완료 (2026-06-10)**.
+> 상태: 확인됨 + 실증 확정(2026-06-09) → **Rank 0 + Rank 2 구현 + Rank 2 실증 완료 (2026-06-10)**.
 > paper 도 장외 주문 거부(`40580000 "모의투자 장종료"`). Rank 0(장 시간 가드 + phantom-fill 방지)
-> 위에 **Rank 2(승인-제출 분리)** 로 실제 체결 경로 구현 — 07:30 승인 → 다음 미국 개장에 검증 TR로 제출.
+> 위에 **Rank 2(승인-제출 분리)** 로 실제 체결 경로 구현·실증 — 07:30 승인 → 다음 미국 개장에 검증 TR로 제출,
+> 정규장(22:30 KST=09:30 ET 개장) `test_rank2_pending.py RUN` 으로 pending→submit→체결 ODNO 0000039098 확인.
 > 사이클이 07:30 KST에 발화·승인하는데 그 시점 미국 정규장은 닫혀 있고, 주문 코드는
 > 정규장 전용 TR만 쓴다 → 실전(prod)에서 체결 불가. + 가짜 체결(phantom-fill) 버그 동반.
 
@@ -75,13 +76,20 @@
 - TR/엔드포인트 확보(위 섹션). 단 (a) 07:30이 접수창(10:00~) 밖, (b) 모의 조회 불가 → Rank 2 대비 이점
   작아 **보류**. 추후 접수창/DST 실측 + 관측성 확보 후 전환 고려.
 
-**Rank 2 — 승인/제출 분리  ✅ 구현됨 (2026-06-10)**
+**Rank 2 — 승인/제출 분리  ✅ 구현됨 + 실증 완료 (2026-06-10)**
 - 07:30 승인된 pick을 `state.pending_orders`에 저장(`order_queued`) → `submission_loop`가 미국 개장 직후
   (09:35 ET ≈ 22:35 KST, DST 자동)에 **검증된 정규 TR**로 제출. 제출 직전 보유/safety_gate 재검증 + 잔고
   재조회 체결 확인(phantom-fill 방지). **18h TTL**로 주말/장애 stale 승인 자동 만료.
 - 구현: `daily_trader`(`submission_loop`/`submit_open_orders`/`_submit_one`/`_place_and_confirm`/
   `seconds_until_submit_window`), `kis/state.py`(`pending_orders`). **재가격 안 함** — 사람이 승인한 지정가를
   그대로 제출(갭으로 미체결 시 `🟡 체결 미확인`). main_loop(07:30)과 submission_loop를 asyncio.gather로 동시 실행.
+- **실증 (2026-06-10 22:30 KST = 09:30 ET 개장 직후)**: `test/test_rank2_pending.py RUN` 통과.
+  Part 1 pending state 라운드트립(주입→로드→정리) + Part 2 submit_open_orders 통합(실제 paper 주문).
+  결과: BUY AAPL 1주 @ $292.25 → 접수 ODNO **0000039098** → `📊 AAPL 매수 체결 — 보유 1주` 잔고확인 통과 →
+  finally 안전 청산 SELL 1주 @ $289.35 ODNO **0000039135** 접수 → KIS 앱에서 체결 확인(보유 0주 복귀, 잔여 없음).
+  봇 코드 경로(`_submit_one`/`_place_and_confirm`/`apply_fill`)가 그대로 작동, `rt_cd=="0"` + `_broker_held_qty`
+  증가 동시 만족 시에만 apply_fill 발동(phantom-fill 안 만듦) 검증. 테스트 청산은 `client.order()` 직호출이라
+  "📊 매도 체결" 알림은 안 오지만(설계상) KIS 체결은 정상. **Rank 2 = 운용 가능**.
 
 **Rank 3 — 트리거를 정규장 안으로 이동**
 - 22:35 KST(DST)/23:35 KST(표준) 발화, 전일 확정 일봉 분석, 장중 즉시 정규주문. 코드 변경 최소.
