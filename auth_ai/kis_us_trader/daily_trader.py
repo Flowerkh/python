@@ -447,8 +447,11 @@ async def _place_and_confirm(bot, client: KISClient, pf: Portfolio, sym: str, si
             text=f"📊 {sym} {'매수' if side=='buy' else '매도'} 체결 — 보유 {pf.positions.get(sym, {}).get('qty', 0)}주")
         log_cycle("cycle_complete", op)
     else:
-        if side == "buy":
-            pf.unstage_buy(sym)  # 접수됐으나 미체결 → staged 해제(체결 시 apply_fill 만 staged 비움, review #1)
+        # 접수(rt_cd=0)됐으나 미체결 = 브로커에 살아있는 주문 → staged 를 '유지'한다(이번 사이클 남은
+        #   픽 cap 에 실노출로 합산하는 게 보수적·정확). 체결 시에만 apply_fill 이 staged→positions 로 옮긴다.
+        #   비승인/주문거부와 달리 여기서 unstage 하면 live 주문이 cap 에서 사라져 덜 안전.
+        #   ⚠️ 잔여 갭(review #8): submit_open_orders 제출 루프는 staged 미사용이라 이 미체결 주문이 일일
+        #   cap(state)에 안 잡힘 → open_orders 예약 회계는 후속 과제(CLAUDE.md 다음 할 일 참조).
         await bot.send_message(
             chat_id=CHAT_ID,
             text=f"🟡 {sym} 주문 접수(rt_cd=0)됐으나 체결 미확인(잔고 변화 없음) → 보유 반영 보류. ODNO={op['odno']}")

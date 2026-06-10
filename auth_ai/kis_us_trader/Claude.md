@@ -141,9 +141,10 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 - [x] researcher.py — decide_parallel(asyncio.gather + retry 2 + 실패종목 hold 폴백, advisor 주입)
 - [x] daily_trader.py — 전종목 trend 수집 → macro_bias N 결정 → decide_parallel → select_picks(conf≥80 BUY 상위 N + SELL) → 픽별 safety_gate/승인/Rank2
 - [x] test/ 신규: test_sector(33)·test_llm_advisor(17)·test_researcher(15)·test_daily_trader(10) + test_universe_health.py(서버 실행용) + test_safety_gate NVDA→FAKE 갱신
-- [ ] **운영 검증 선결**: 서버에서 `python test/test_universe_health.py`(운영시간) → 10종목 paper_tradable 실측·캐시. 거래불가 종목 paper_tradable=False 로 내릴 것
+- [x] **운영 검증 선결**: 서버 `test/test_universe_health.py` 통과(2026-06-11) — 11종목 전부 paper_tradable=True(가격0·오류 0), `.state/universe_cache.json` 박제. 배포 선결 해제.
 - [ ] **잔여 UX**: approval.py 텔레그램 종목별 토글 다이제스트(현재 per-pick 단건 승인으로 기능 대체됨, 실거동 검증 필요)
-- [ ] 2주 라이브 운영 — 화이트리스트 외 ticker 누출 0 + staged_buys cap 정확 차단 + macro_bias N 의도대로
+- [ ] **review #8 잔여**: submit_open_orders open_orders 예약 회계(접수-미체결 일일 cap 미반영 갭)
+- [ ] 라이브 배포(337d34a pull + systemd 재시작) + 2주 운영 — 화이트리스트 외 ticker 누출 0 + staged_buys cap 정확 차단 + macro_bias N 의도대로
 
 ### 그 이후 (계획)
 - [ ] Phase 3: weekly_researcher (web_search 매크로 정성 요약 주 1회)
@@ -185,20 +186,30 @@ llm_advisor 강화 + researcher.decide_parallel + daily_trader 통합(macro_bias
 (워크플로 23 에이전트, 6차원→발견별 적대검증) 15건 수정**: staged 누수 해제(unstage_buy), 일일 cap 사이클내
 누적(staged 합산), loss-limit·dead-man(consecutive_errors) 실배선, 환각 정규식 CJK 조사 대응, ET 주말가드+
 pending dedup, breadth 반도체 한정, SMH 충분성 50, OpenAI timeout. 회귀 test_portfolio 신규 + 7스위트 green.
-상세: DESIGN §9(2026-06-11) 표. ⚠️ **A의 서버 soak(7일) + audit verify, B의 운영 검증은 네이버클라우드 VM
-에서 수행 — 로컬 dev 박스에는 .state/logs 없음.**
+상세: DESIGN §9(2026-06-11) 표. 커밋 **337d34a → origin/master push 완료**. ⚠️ **A의 서버 soak(7일) +
+audit verify, B의 2주 운영 검증은 네이버클라우드 VM 에서 수행 — 로컬 dev 박스에는 .state/logs 없음.**
 
-남은 후보:
-1. **Phase 2 운영 검증(선결)**: 서버에서 `test/test_universe_health.py`(운영시간 22:30~ KST) 실행 →
-   반도체 10종목 모의 거래가능 실측. 일부는 모의 매매 불가일 수 있음(KIS 함정 #4) → paper_tradable=False.
-   ⚠️ **배포 순서**: universe 확장이 서버에 배포되면 다음 사이클부터 11종목을 도는다. health 실측 전 라이브
-   배포 금지. macro_bias N(risk_off→0) 이 1차 throttle.
-2. **잔여 UX — approval.py 다이제스트**: 종목별 토글(기본 OFF) 텔레그램 다이제스트. 현재는 per-pick 단건
-   승인으로 다중 픽도 기능 동작(픽 N개=메시지 N개). 친화도 개선이라 실거동 검증과 함께 별도 진행.
-3. **A 운영 soak 마저**: daily_trader 7일 무에러(KST 07:30) + `python -m kis.audit verify`(7줄) + Phase 1
-   staged_buys 0 리셋/last_buy_at 흔적 — 전부 서버 런타임 증거(VM 에서 점검).
-4. **Strong AND-gate 정규화 (P2 잔류)**: Phase 2 운영 중 종목별 strong 빈도 불균일 발견되면 spread/chg
-   도 vol_factor 로 정규화 검토.
+**배포 선결 해제(2026-06-11)**: 서버 `test/test_universe_health.py` 실측 통과 — 11종목 전부 `paper_tradable=True`
+(가격0·오류 0). AAPL $291 / NVDA $199 / AMD $440 / AVGO $367 / MU $872 / INTC $105 / QCOM $188 / TXN $282 /
+AMAT $490 / LRCX $318 / TSM $407. `.state/universe_cache.json` 박제됨. → 반도체 10종목 모의 매매 가능 확인.
+
+남은 후보 (우선순위 순):
+1. **라이브 배포 + 2주 운영 검증** ← 다음 액션. 배포 선결(health) 해제됨. 서버에서 master(337d34a) pull →
+   systemd `kis-trader.service` 재시작 → 11종목 가동. 검증 포인트: 화이트리스트 외 ticker 누출 0
+   (audit `reason_foreign_ticker`), macro_bias N(risk_on3/neutral2/off0) 의도대로, staged cap 정확 차단,
+   ET 주말 가드로 일·월 KST 사이클 skip, pending dedup 동작.
+2. **잔여 UX — approval.py 다이제스트**: 종목별 토글(기본 OFF) 텔레그램 다이제스트. 현재 per-pick 단건
+   승인으로 다중 픽 기능 동작(픽 N개=메시지 N개). 친화도 개선 — 실거동 검증과 함께.
+3. **review #8 잔여 — open_orders 예약 회계**: 제출 루프(`submit_open_orders`)는 staged 미사용이라 접수-미체결
+   주문이 일일 cap(state)에 안 잡힘 → 슬로우필 시 일일예산 초과 여지. `open_orders` 채우고 `can_buy` 가
+   미정산 open BUY 를 합산 + 잔고 sync 로 reconcile. (07:30 승인시점은 staged 합산으로 이미 cap 적용됨 →
+   잔여 위험은 제출-시점·다중 근접예산 BUY 한정, paper+사람승인으로 폭발반경 작음.)
+4. **A 운영 soak 마저**: daily_trader 7일 무에러(KST 07:30) + `python -m kis.audit verify` + Phase 1
+   staged_buys 0 리셋/last_buy_at 흔적 — 서버 런타임 증거(VM 점검).
+5. **Strong AND-gate 정규화 (P2 잔류)**: 운영 중 종목별 strong 빈도 불균일 발견 시 spread/chg 도
+   vol_factor 로 정규화 검토(현재 정규화는 weak score 한 곳).
+6. **Phase 3 / 4**: weekly_researcher(주1회 web_search 매크로 정성요약) → 운영 강화(MONTHLY_LLM_COST_HARD_CAP,
+   prod 이중잠금, dead-man health-ping, get_orders 미체결 자동취소).
 
 ## 안전/보안 규칙 (반드시 지킬 것)
 
