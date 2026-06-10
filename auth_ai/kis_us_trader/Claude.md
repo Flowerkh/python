@@ -40,7 +40,8 @@ kis_us_trader/
 │  ├─ state.py           # .state/state.json 영속화. portalocker + asyncio.Lock + ET 자정 리셋.
 │  ├─ audit.py           # logs/cycles-YYYYMM.jsonl. SHA-256 hash chain + verify_chain.
 │  ├─ universe.py        # 매매 가능 종목 화이트리스트(Phase 1: AAPL) + paper_tradable 24h 캐시.
-│  └─ signals.py         # signal_strength 임계값/분류 단일 진실 소스(classify_strength). daily_trader/tune_thresholds 공유.
+│  └─ signals.py         # signal_strength 임계값/분류 단일 진실 소스. classify_strength + compute_vol_factor
+│                        # (P2 vol 정규화, BASELINE_VOL=0.015). daily_trader/tune_thresholds 공유.
 ├─ llm_advisor.py        # OpenAI 호출 → {action, confidence, reason} JSON
 ├─ portfolio.py          # Portfolio 클래스: 잔고 sync(fail-closed) + staged_buys + apply_fill + allocate_budget.
 ├─ safety_gate.py        # 8개 안전 검사 게이트(Pick, GateResult, can_buy/can_sell/evaluate).
@@ -49,7 +50,8 @@ kis_us_trader/
 │                        # submission_loop(개장) asyncio.gather 동시 실행.
 ├─ tools/
 │  ├─ tune_thresholds.py # signal_strength 임계값 분포/방향성 검증(읽기 전용 분석 도구)
-│  └─ flipped_day_pnl.py # P1-후속: weak 라벨 개편 flipped-day forward P&L + strong-down EXIT 시뮬
+│  ├─ flipped_day_pnl.py # P1-후속: weak 라벨 개편 flipped-day forward P&L + strong-down EXIT 시뮬
+│  └─ vol_calibration.py # P2: BASELINE_VOL 후보 sweep + 종목별 weak 균일화 측정(Phase 2 재캘리브용)
 ├─ docs/                 # 설계·운영 문서
 │  ├─ DESIGN.md          # 다종목/반도체 섹터 확장 설계 + Phase 0~4 로드맵 + §9 변경이력
 │  ├─ DEPLOY_NAVER_CLOUD.md  # 네이버클라우드 배포 절차 (Python 3.11, sparse-checkout, systemd 등)
@@ -64,6 +66,7 @@ kis_us_trader/
 │  ├─ test_trader.py      # 일봉조회 + 추세지표 계산 단독 검증
 │  ├─ test_offhours_order.py  # 장외 주문 거동 실증(07:30 타이밍 결함 확정용)
 │  ├─ test_rank2_pending.py   # Rank 2 pending 라운드트립 + 정규장 제출 통합 smoke
+│  ├─ test_signals.py     # kis.signals(P2 vol 정규화 + classify_strength 회귀) 23 케이스
 │  └─ Telegram.py         # 텔레그램 승인 흐름 단독 검증
 ├─ .state/               # ★런타임 생성. git 제외. state.json 영속화.
 └─ logs/                 # ★런타임 생성. git 제외. daily_trader.{out,err} + cycles-YYYYMM.jsonl.
@@ -138,23 +141,29 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 - RUN_HOUR=7, RUN_MINUTE=30 (매일 점검 시각 KST — 미국장 마감 후)
 - SUBMIT_HOUR_ET=9, SUBMIT_MINUTE_ET=35 (Rank 2 제출 = 개장 직후 ≈ 22:35 KST), PENDING_TTL_HOURS=18
 - APPROVAL_TIMEOUT=1800 (승인 무응답 30분 → 자동 거절)
-- signal_strength 임계값은 `kis/signals.py`(WEAK_SCORE_CUT=3.5 등). 근거: docs/SIGNAL_STRENGTH_ANALYSIS.md.
+- signal_strength 임계값은 `kis/signals.py`(WEAK_SCORE_CUT=3.5, **BASELINE_VOL=0.015, VOL_WINDOW=20 — P2 vol 정규화**). 근거: docs/SIGNAL_STRENGTH_ANALYSIS.md P2 절.
 
 ## 다음 할 일 (2026-06 기준 — 상세 이력은 DESIGN.md §9)
 
 최근 완료: signal_strength 분석·개편(kis/signals.py, weak score<3.5) + P1 백테스트(방향 엣지 없음,
 throttle이지 알파 아님) + **P1-후속**(2026-06-10, `tools/flipped_day_pnl.py` — flipped uptrend
 +1.089% ≈ non-flipped uptrend +0.962% → throttle 확정, strong-down EXIT 시뮬 5종목 -22~-82%p 일관
-→ 구 매도 넛지 제거 정당화), 주문 타이밍 결함 발견·실증(07:30=장종료) + Rank 0 안전패치 + **Rank 2
-승인-제출 분리**(거래 경로 완성) + **Rank 2 정규장 제출 실증 완료**(2026-06-10 22:30 KST 개장 직후,
-`test_rank2_pending.py RUN` Part 2 — pending→submit→체결 ODNO 0000039098 BUY 1주 @ $292.25 + 안전
-청산 SELL 0000039135 @ $289.35). 텔레그램 메시지 추세+LLM 사유 풍부화.
+→ 구 매도 넛지 제거 정당화) + **P2 완료**(2026-06-10, vol 정규화: `BASELINE_VOL=0.015` + `compute_vol_factor` +
+`classify_strength(vol_factor=1.0)`, AAPL p50 vol round, 종목 가로 weak 발동률 23.3pp→12.3pp 균일화,
+AMD strong 과발동 동시 throttle, `test_signals.py` 23 케이스), 주문 타이밍 결함 발견·실증
+(07:30=장종료) + Rank 0 안전패치 + **Rank 2 승인-제출 분리**(거래 경로 완성) + **Rank 2 정규장 제출
+실증 완료**(2026-06-10 22:30 KST 개장 직후, `test_rank2_pending.py RUN` Part 2 — pending→submit→체결
+ODNO 0000039098 BUY 1주 @ $292.25 + 안전 청산 SELL 0000039135 @ $289.35). 텔레그램 메시지 추세+LLM
+사유 풍부화.
 
 남은 후보:
-1. **P2**: 종목별/변동성 정규화 임계값(Phase 2 반도체 진입 시).
-2. **Phase 2 진입**: 반도체 9종목 화이트리스트 추가(NVDA/AMD/AVGO/MU/INTC/QCOM/TXN/AMAT/LRCX/TSM) +
+1. **Phase 2 진입**: 반도체 9종목 화이트리스트 추가(NVDA/AMD/AVGO/MU/INTC/QCOM/TXN/AMAT/LRCX/TSM) +
    `sector.py`(macro_bias) + `researcher.decide_parallel` + `approval.py` 다이제스트 → 실제 NVDA/AVGO
-   매수 경로 개통. 큰 변화·운영 검증 부담.
+   매수 경로 개통. **P2 vol 정규화로 종목 가로 weak throttle 균일 발동 보장(12.3pp 범위)** — 신규
+   종목도 같은 안전 브레이크가 자동 적용. 큰 변화·운영 검증 부담.
+2. **Strong AND-gate 정규화 (P2 잔류)**: Phase 2 운영 중 종목별 strong 빈도 불균일 발견되면 spread/chg
+   도 vol_factor 로 정규화 검토. AMD strong ~64% 는 P2 weak normalization 으로 일차 해소됐으나 완전
+   균일화는 별도.
 
 ## 안전/보안 규칙 (반드시 지킬 것)
 

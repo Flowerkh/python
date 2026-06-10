@@ -40,8 +40,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from kis import universe
 from kis.client import KISClient
-from kis.signals import (STRONG_CHG_PCT, STRONG_SPREAD_PCT, WEAK_SCORE_CUT,
-                         classify_strength)
+from kis.signals import (BASELINE_VOL, STRONG_CHG_PCT, STRONG_SPREAD_PCT,
+                         VOL_WINDOW, WEAK_SCORE_CUT, classify_strength,
+                         compute_vol_factor)
 
 # ── (B) score 모드 파라미터 ──
 #   score = spread% + SCORE_CHG_WEIGHT · |chg%|
@@ -64,7 +65,11 @@ def _pct(sorted_arr: list, p: float):
 
 
 def build_rows(closes: list) -> list:
-    """매 영업일의 지표 + forward(부호) 수익률을 dict 리스트로."""
+    """매 영업일의 지표 + forward(부호) 수익률을 dict 리스트로.
+
+    P2(2026-06-10): 각 행에 그 시점 trailing 20d vol_factor 도 함께 산출 — production
+    `compute_vol_factor` 와 동일 윈도. classify_strength 호출 시 정규화 적용에 사용.
+    """
     rows = []
     for i in range(20, len(closes)):
         w = closes[: i + 1]
@@ -75,11 +80,13 @@ def build_rows(closes: list) -> list:
         chg = abs(w[-1] / w[-6] - 1) * 100
         direction = 1.0 if sma5 >= sma20 else -1.0  # 추세 방향
         score = spread + SCORE_CHG_WEIGHT * chg
+        vol_factor = compute_vol_factor(w)  # production 과 동일 함수/윈도
         # forward 수익률(부호 유지)
         sf1 = (closes[i + 1] / closes[i] - 1) * 100 if i + 1 < len(closes) else None
         sf5 = (closes[i + 5] / closes[i] - 1) * 100 if i + 5 < len(closes) else None
         rows.append({"spread": spread, "chg": chg, "direction": direction,
-                     "score": score, "sf1": sf1, "sf5": sf5})
+                     "score": score, "vol_factor": vol_factor,
+                     "sf1": sf1, "sf5": sf5})
     return rows
 
 
@@ -146,11 +153,16 @@ def analyze(symbol: str, exchange: str, closes: list) -> None:
 
     # (A) production 라벨링 (kis.signals.classify_strength 공유)
     sf, lo, hi = make_label_score(rows)
+    vol_factors = sorted(r["vol_factor"] for r in rows)
+    vf_mean = sum(vol_factors) / len(vol_factors)
+    print(f"    vol_factor: mean={vf_mean:.2f}  p30/p50/p75/p90="
+          f"{[round(_pct(vol_factors, q), 2) for q in qs]}  "
+          f"(BASELINE_VOL={BASELINE_VOL}, window={VOL_WINDOW}d)")
     print()
     directional_report(
-        f"A. production: weak score<{WEAK_SCORE_CUT} / "
+        f"A. production: weak norm_score<{WEAK_SCORE_CUT} (score/vol_factor) / "
         f"strong spread>={STRONG_SPREAD_PCT}&chg>={STRONG_CHG_PCT}",
-        rows, lambda r: classify_strength(r["spread"], r["chg"]))
+        rows, lambda r: classify_strength(r["spread"], r["chg"], r["vol_factor"]))
     print()
     directional_report(f"B. score 모드  weak<{lo:.2f} / strong>={hi:.2f} "
                        f"(p{int(SCORE_WEAK_PCTL*100)}/p{int(SCORE_STRONG_PCTL*100)})",

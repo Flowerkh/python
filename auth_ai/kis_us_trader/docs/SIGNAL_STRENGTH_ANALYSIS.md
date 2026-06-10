@@ -155,13 +155,15 @@ P1b 의 메시지("알파 아님·안전성 수정")는 유지되되, 근거가 
 
 ## 현재 상태 (2026-06-10 · 다음 세션 resume 지점)
 
-- **P0·P1·P1-후속 + Rank 2 실증 완료.** production 라벨(kis.signals) 동작 확인(AAPL weak ~31%,
-  브레이크 부활), 첫 라이브 07:30 사이클 정상 완주, P1 백테스트 + 적대적 검증, **P1-후속(flipped-day
-  P&L · strong-down EXIT 시뮬)으로 P1b 항등식→측정 전환 + P1d 위해경로 5종목 일관 재확인**(위
-  "P1-후속 결과" 참고), **Rank 2 정규장 제출 실증 완료**(ORDER_TIMING_ISSUE.md, ODNO 0000039098).
-- **다음 후보 (택1)**: ① **P2**(종목별/변동성 정규화 임계값 — Phase 2 진입 시) / ② **반도체 화이트리스트
-  진입**(NVDA/AVGO/AMD/MU/INTC/QCOM/TXN/AMAT/LRCX/TSM, sector.py + decide_parallel + 다이제스트). 새 세션은
-  이 문서 + `docs/DESIGN.md` Phase 2 절 읽고 이어가면 됨.
+- **P0·P1·P1-후속·P2 + Rank 2 실증 완료.** production 라벨(kis.signals) 동작 확인(AAPL weak ~27%
+  post-P2, 브레이크 부활), 첫 라이브 07:30 사이클 정상 완주, P1 백테스트 + 적대적 검증, **P1-후속**
+  (flipped-day P&L + strong-down EXIT 시뮬, P1b 항등식→측정 전환), **P2**(vol 정규화, `BASELINE_VOL=0.015`,
+  종목 가로 weak 발동률 12.3pp 균일화 — 23.3pp→12.3pp), **Rank 2 정규장 제출 실증 완료**
+  (ORDER_TIMING_ISSUE.md, ODNO 0000039098).
+- **다음 후보**: **Phase 2 진입** — `kis/universe.py` 반도체 9종목 추가(NVDA/AMD/AVGO/MU/INTC/QCOM/TXN/
+  AMAT/LRCX/TSM, TSM 만 NYSE) + `sector.py`(SMH macro_bias) + `researcher.decide_parallel`(asyncio.gather)
+  + `approval.py` 다이제스트 + reason 환각 검증 정규식. P2 vol 정규화로 종목 가로 weak throttle 균일 발동
+  보장(실측 12.3pp 범위). 새 세션은 이 문서 + `docs/DESIGN.md` Phase 2 절 읽고 이어가면 됨.
 - ⚠️ KIS `dailyprice`는 ~100일만 반환 → 서버 `tune_thresholds`는 최근 80일 창만 보여
   방향 적중률이 좋아 **보임**(국면 아티팩트). 방향 엣지 판정 금지. 2년 분석이 진짜 그림.
 - ⚠️ 2년×5종목 분석 원본(Yahoo JSON + 하네스)은 repo 밖 `%TEMP%\sma_analysis`(휘발성).
@@ -184,10 +186,25 @@ P1b 의 메시지("알파 아님·안전성 수정")는 유지되되, 근거가 
       uptrend +0.962%, 차이 +0.13%p=시장평균 → throttle), P1d 위해경로 5종목 일관(-22~-82%p) 재확인.
       도구: `tools/flipped_day_pnl.py` (Yahoo fetch, 분석 전용).
 
-### P2 — Phase 2 진입 시
-- [ ] **종목별/변동성정규화 임계값.** `WEAK_SCORE_CUT=3.5`는 AAPL 전용(증거: weak이 AAPL 31%
-      vs AMD 8%). score를 종목 자체 변동성(트레일링 실현변동성 or ATR)으로 정규화하면 컷 1세트로
-      통일. 반도체 10종목 추가 시 같이.
+### P2 — 종목별/변동성 정규화 임계값  ✅ 완료(2026-06-10)
+- [x] **score 를 trailing 20d daily-return stdev 로 정규화** → `kis/signals.py` 에 `BASELINE_VOL=0.015`,
+      `VOL_WINDOW=20`, `compute_vol_factor(closes)`, `classify_strength(spread, chg, vol_factor=1.0)` 도입.
+      `daily_trader.compute_trend` 가 closes 로 vol_factor 산출해 classify_strength 에 전달 + trend dict
+      에 `vol_factor` 노출. `tools/tune_thresholds.py` 도 동일 경로(드리프트 차단). 기본값 1.0 보장으로
+      P1 까지의 호출 회귀 0(test_signals 23 케이스 + test_safety_gate 22 케이스 통과).
+- [x] **측정 (`tools/vol_calibration.py`, BASELINE_VOL sweep)**: weak 발동률 — 정규화 전 AAPL 31% /
+      NVDA 16% / AMD 8% / TSM 13% / INTC 11% (range 23.3pp) → 정규화 후 AAPL 27% / NVDA 35% / AMD 31% /
+      TSM 36% / INTC 39% (range 12.3pp, ~2배 균일화). AAPL p50 vol ≈ 0.0144 → BASELINE_VOL=0.015 round.
+- [x] **AMD strong 과발동 동시 해소** (덤): weak normalization 이 norm score 우선 판정이라 raw strong
+      만족이라도 norm < 3.5 면 weak. AMD strong ~64% 였던 과발동도 함께 throttle (Phase 2 진입 시 실제
+      매수 빈도 종목 가로 평준화). 단 큰 breakout(예: spread=3 & chg=8 on AMD) 은 norm score 5.5≥3.5
+      통과 → strong 유지.
+
+### P2 한계/잔류
+- [ ] **Strong AND-gate 자체는 raw 유지** — 정규화는 score 한 곳만. Phase 2 운영 중 종목별 strong 빈도
+      불균일 발견되면 spread/chg 도 vol_factor 로 나누는 추가 정규화 검토.
+- [ ] **상승장 편향 + 검정력 한계 동일** (P1e 참고) — 측정은 2년 5종목 Yahoo 일봉, prod-LLM 의사결정
+      변화는 별도 백테스트 필요.
 
 ### 설계 질문 (정해두면 좋음)
 방향 엣지가 없고 strong이 유일 거래 경로인 구조에서 Phase 1 의도:
@@ -209,8 +226,11 @@ P1b 의 메시지("알파 아님·안전성 수정")는 유지되되, 근거가 
 수행됨. production 라벨링은 `kis/signals.py` 한 곳이 진실 소스.
 
 ## 관련 파일
-- `kis/signals.py` — 임계값 상수 + `classify_strength` (단일 진실 소스)
-- `daily_trader.py` — `compute_trend`(라벨 사용), `CONFIDENCE_THRESHOLD=80`(거래 문턱), 게이트
+- `kis/signals.py` — 임계값 상수 + `classify_strength` + **`compute_vol_factor`(P2)** + `BASELINE_VOL=0.015` / `VOL_WINDOW=20` (단일 진실 소스)
+- `daily_trader.py` — `compute_trend`(라벨 사용 + vol_factor 산출), `CONFIDENCE_THRESHOLD=80`(거래 문턱), 게이트
 - `llm_advisor.py` — `SYSTEM_PROMPT`(라벨 해석 규칙)
-- `tools/tune_thresholds.py` — 읽기 전용 분포/검증 도구
+- `tools/tune_thresholds.py` — production 라벨링(vol_factor 정규화 포함) 종목별 분포 + directional 검증
+- `tools/vol_calibration.py` — **P2 BASELINE_VOL 후보 sweep + 종목별 weak 균일화 측정**(Phase 2 재캘리브용)
+- `tools/flipped_day_pnl.py` — P1-후속 박제용(default vol_factor=1.0 으로 pre-P2 NEW 라벨링 재현)
+- `test/test_signals.py` — `classify_strength` / `compute_vol_factor` 23 단위 케이스(회귀 + P2 정규화)
 - `safety_gate.py` — signal_strength 미참조(라벨은 주문을 직접 막지 않음)

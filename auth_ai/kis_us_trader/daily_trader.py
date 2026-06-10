@@ -36,7 +36,7 @@ from telegram.ext import Application, CallbackQueryHandler, ContextTypes
 from kis import universe
 from kis.audit import log_cycle
 from kis.client import KISClient, parse_balance_positions
-from kis.signals import classify_strength
+from kis.signals import classify_strength, compute_vol_factor
 from kis.state import is_paused, load_state, update_state
 from llm_advisor import get_advice
 from portfolio import Portfolio
@@ -91,13 +91,15 @@ def compute_trend(closes: list[float]) -> dict:
     # 추세 강도 라벨 (kis.signals.classify_strength — daily_trader/tune_thresholds 공유).
     #   ⚠️ '추세 강도/변동성' 라벨이지 '방향' 신호가 아니다. 방향(매수/매도)은 LLM 이
     #      price·sma5·sma20·change_5d_pct 데이터로만 판단한다(llm_advisor SYSTEM_PROMPT 참고).
+    #   P2(2026-06-10): score 를 종목 자체 trailing 20d vol 로 정규화 → 종목 가로 weak 균일.
     #   임계값 정의/근거는 kis/signals.py, 분포 분석은 tools/tune_thresholds.py 참고.
+    vol_factor = compute_vol_factor(closes)
     if sma5 is None or sma20 is None or change_5d_pct is None:
         signal_strength = "weak"  # 데이터 부족 시 보수적
     else:
         spread_pct = abs(sma5 - sma20) / price * 100
         chg = abs(change_5d_pct)
-        signal_strength = classify_strength(spread_pct, chg)
+        signal_strength = classify_strength(spread_pct, chg, vol_factor)
 
     return {
         "price": round(price, 2),
@@ -108,6 +110,7 @@ def compute_trend(closes: list[float]) -> dict:
         "sma5_above_sma20": (sma5 > sma20) if (sma5 and sma20) else None,
         "change_5d_pct": change_5d_pct,
         "signal_strength": signal_strength,
+        "vol_factor": round(vol_factor, 3),
         "samples": n,
     }
 
@@ -192,7 +195,7 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         return
 
     trend = compute_trend(closes)
-    print(f"  [{sym}] price={trend['price']} sma20={trend['sma20']} sma5>sma20={trend['sma5_above_sma20']} signal={trend['signal_strength']}")
+    print(f"  [{sym}] price={trend['price']} sma20={trend['sma20']} sma5>sma20={trend['sma5_above_sma20']} signal={trend['signal_strength']} vol_factor={trend.get('vol_factor', 1.0)}")
 
     # 5) LLM
     advice = get_advice(sym, trend)
@@ -204,6 +207,7 @@ async def _process_symbol(bot, client: KISClient, pf: Portfolio, sym: str, exch:
         "price": trend["price"],
         "sma20": trend["sma20"],
         "signal_strength": trend["signal_strength"],
+        "vol_factor": trend.get("vol_factor", 1.0),
         "action": action,
         "confidence": conf,
         "reason": reason,

@@ -137,13 +137,14 @@ tail -30 /opt/kis_us_trader_repo/auth_ai/kis_us_trader/logs/daily_trader.out
 - ✅ 정상 (사이클 발화 후):
   ```
   [2026-06-XX 07:30] 일일 사이클 시작
-    [AAPL] price=311.5 sma20=305.2 sma5>sma20=True signal=moderate
+    [AAPL] price=311.5 sma20=305.2 sma5>sma20=True signal=moderate vol_factor=0.95
     [AAPL] LLM: buy (확신도 88) - <사유>
   다음 실행까지 23.9시간 대기...
   ```
-  - `signal=weak | moderate | strong` 은 `kis.signals.classify_strength` 가 산출한 추세 강도/변동성 라벨(**방향 신호 아님**). weak=score(spread%+|chg%|)<3.5, strong=spread%≥1 & |chg%|≥3.
-  - `signal=weak` 이면 LLM 프롬프트 룰상 강제로 `hold` + confidence ≤ 50 → 시나리오 A. weak 은 설계상 **~30% 발동**(보수 브레이크).
-  - `signal=strong` 은 `CONFIDENCE_THRESHOLD=80` 을 넘길 수 있는 유일한 밴드 → 데이터가 한 방향을 충분히 뒷받침하면 시나리오 B.
+  - `signal=weak | moderate | strong` 은 `kis.signals.classify_strength` 가 산출한 추세 강도/변동성 라벨(**방향 신호 아님**). **P2(2026-06-10)**: weak=normalized score<3.5 (score=(spread%+|chg%|)/vol_factor), strong=spread%≥1 & |chg%|≥3 AND norm score≥3.5.
+  - `vol_factor` = trailing 20d daily-return stdev / BASELINE_VOL(0.015). AAPL ≈ 1.0(현행 보존), 고변동 종목(AMD/INTC 등) > 1 → score 분모 커져 weak 발동 ↑. Phase 2 진입 시 종목별 weak throttle 균일 보장(측정 12.3pp 범위).
+  - `signal=weak` 이면 LLM 프롬프트 룰상 강제로 `hold` + confidence ≤ 50 → 시나리오 A. weak 은 설계상 **AAPL 기준 ~27%(P2 후), 고변동 종목 ~30~39% 발동**(보수 브레이크).
+  - `signal=strong` 은 `CONFIDENCE_THRESHOLD=80` 을 넘길 수 있는 유일한 밴드 → 데이터가 한 방향을 충분히 뒷받침하면 시나리오 B. 고변동 종목은 raw spread/chg 가 strong 임계를 넘어도 norm score 가 낮으면 weak (AMD strong 과발동 throttle).
 - ❌ 이상:
   - "일일 사이클 시작" 줄 자체가 없으면 시각/스케줄러 문제.
   - Python traceback이 있으면 §3.2 참고.
@@ -205,11 +206,12 @@ sudo journalctl -u kis-trader -n 100 --no-pager
 | Telegram 401/403 | 봇 토큰 무효화 | BotFather에서 토큰 재발급 후 `.env` 갱신 |
 
 ### 3.3 사이클은 발화했는데 hold만 계속 나옴
-- 상당 부분 정상 — weak 은 설계상 ~30% 발동(LLM 에 hold 강제하는 보수 브레이크)이고, `CONFIDENCE_THRESHOLD=80` 상 strong 만 거래 문턱을 넘으므로 hold/skip 이 흔하다.
-- `signal=...` 라벨로 구분:
-  - `signal=weak` 비중이 과도하면 `kis/signals.py` 의 `WEAK_SCORE_CUT`(현 3.5, AAPL 기준)이 현재 변동성 대비 높을 수 있음 → `tools/tune_thresholds.py` 로 분포 재확인 후 조정 검토. (구 AND-gate 시절엔 반대로 weak 이 ~1.7%만 떠 브레이크가 死문자였음 — docs/SIGNAL_STRENGTH_ANALYSIS.md)
+- 상당 부분 정상 — weak 은 설계상 종목별 ~27~39% 발동(P2 vol 정규화 후, LLM 에 hold 강제하는 보수 브레이크)이고, `CONFIDENCE_THRESHOLD=80` 상 strong 만 거래 문턱을 넘으므로 hold/skip 이 흔하다.
+- `signal=...` / `vol_factor=...` 라벨로 구분:
+  - `signal=weak` 비중이 과도하면 (a) `vol_factor` 가 큰 시점(고변동 국면)인지, (b) `kis/signals.py` 의 `WEAK_SCORE_CUT`(현 3.5)/`BASELINE_VOL`(현 0.015)이 현재 변동성 대비 높을 수 있음 → `tools/tune_thresholds.py` 로 분포 재확인, `tools/vol_calibration.py` 로 BASELINE_VOL sweep 후 조정 검토.
   - `signal=moderate/strong` 인데도 매일 hold/skip 이면 LLM 이 보수적이거나 confidence<80 으로 걸러진 것. 라벨은 '방향' 신호가 아니라(분석상 방향 예측력 없음) 정상 범주.
-- 7일 전부 hold 라도 audit log에 `signal_strength` 가 박혀 있어 사후 회고 가능.
+  - 구 AND-gate 시절엔 반대로 weak 이 ~1.7%만 떠 브레이크가 死문자였음(P1 개편으로 해소). P2 후엔 종목별 균일화 + AMD strong 과발동도 동시 throttle — docs/SIGNAL_STRENGTH_ANALYSIS.md P2 절.
+- 7일 전부 hold 라도 audit log에 `signal_strength` + `vol_factor`(P2)가 박혀 있어 사후 회고 가능.
 
 ### 3.4 `consecutive_errors`가 누적되고 있음
 ```bash
