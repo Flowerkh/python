@@ -62,7 +62,8 @@ kis_us_trader/
 │  ├─ DEPLOY_NAVER_CLOUD.md  # 네이버클라우드 배포 절차 (Python 3.11, sparse-checkout, systemd 등)
 │  ├─ DAILY_CHECK.md     # 매일 아침 점검 체크리스트 + 텔레그램 시나리오 A~G + 트러블슈팅
 │  ├─ SIGNAL_STRENGTH_ANALYSIS.md  # signal_strength 2년 분석 + P1 백테스트(throttle이지 알파 아님)
-│  └─ ORDER_TIMING_ISSUE.md  # 07:30=정규장 마감 후 결함 + Rank 0/2 수정 기록
+│  ├─ ORDER_TIMING_ISSUE.md  # 07:30=정규장 마감 후 결함 + Rank 0/2 수정 기록
+│  └─ PHASE2_GO_LIVE.md      # Phase 2 재배포 런북 + 배포전 게이트(SMH/OpenAI) + 2주 검증 체크리스트
 ├─ test/                 # 검증용 단독 스크립트. 프로젝트 루트에서 실행.
 │  ├─ test_order.py       # 주문/취소 API 단독 검증(매수 접수 → 즉시 취소)
 │  ├─ test_balance_parse.py  # 잔고 API 응답 캡처 + parse_balance_positions 9케이스 fail-closed
@@ -194,10 +195,11 @@ audit verify, B의 2주 운영 검증은 네이버클라우드 VM 에서 수행 
 AMAT $490 / LRCX $318 / TSM $407. `.state/universe_cache.json` 박제됨. → 반도체 10종목 모의 매매 가능 확인.
 
 남은 후보 (우선순위 순):
-1. **라이브 배포 + 2주 운영 검증** ← 다음 액션. 배포 선결(health) 해제됨. 서버에서 master(337d34a) pull →
-   systemd `kis-trader.service` 재시작 → 11종목 가동. 검증 포인트: 화이트리스트 외 ticker 누출 0
-   (audit `reason_foreign_ticker`), macro_bias N(risk_on3/neutral2/off0) 의도대로, staged cap 정확 차단,
-   ET 주말 가드로 일·월 KST 사이클 skip, pending dedup 동작.
+1. **라이브 배포 + 2주 운영 검증** ← 다음 액션. **런북: [docs/PHASE2_GO_LIVE.md](docs/PHASE2_GO_LIVE.md)**.
+   ⚠️ **배포 전 게이트 2개(서버 실측)**: ① `python sector.py` → bias≠unknown·SMH≥50캔들(SMH 모의조회 가능 확인,
+   안 되면 macro_bias unknown→N=0 BUY 영구컷) ② `python llm_advisor.py` → 401 아님(키 무효 시 11종목 조용히 hold).
+   재배포 = stop→backup→`git pull --ff-only`(95fc503)→pip→오프라인테스트→restart→로그/audit 확인. 검증 포인트:
+   화이트리스트 외 ticker 누출 0(`reason_foreign_ticker`), macro_bias N 매핑, staged cap 차단, ET 주말 skip, pending dedup.
 2. **잔여 UX — approval.py 다이제스트**: 종목별 토글(기본 OFF) 텔레그램 다이제스트. 현재 per-pick 단건
    승인으로 다중 픽 기능 동작(픽 N개=메시지 N개). 친화도 개선 — 실거동 검증과 함께.
 3. **review #8 잔여 — open_orders 예약 회계**: 제출 루프(`submit_open_orders`)는 staged 미사용이라 접수-미체결
