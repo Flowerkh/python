@@ -48,7 +48,8 @@ kis_us_trader/
 │                        # 분리(pending 큐잉 → submission_loop 가 미국 개장에 제출). main_loop(07:30) +
 │                        # submission_loop(개장) asyncio.gather 동시 실행.
 ├─ tools/
-│  └─ tune_thresholds.py # signal_strength 임계값 분포/방향성 검증(읽기 전용 분석 도구)
+│  ├─ tune_thresholds.py # signal_strength 임계값 분포/방향성 검증(읽기 전용 분석 도구)
+│  └─ flipped_day_pnl.py # P1-후속: weak 라벨 개편 flipped-day forward P&L + strong-down EXIT 시뮬
 ├─ docs/                 # 설계·운영 문서
 │  ├─ DESIGN.md          # 다종목/반도체 섹터 확장 설계 + Phase 0~4 로드맵 + §9 변경이력
 │  ├─ DEPLOY_NAVER_CLOUD.md  # 네이버클라우드 배포 절차 (Python 3.11, sparse-checkout, systemd 등)
@@ -142,14 +143,18 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 ## 다음 할 일 (2026-06 기준 — 상세 이력은 DESIGN.md §9)
 
 최근 완료: signal_strength 분석·개편(kis/signals.py, weak score<3.5) + P1 백테스트(방향 엣지 없음,
-throttle이지 알파 아님), 주문 타이밍 결함 발견·실증(07:30=장종료) + Rank 0 안전패치 + **Rank 2 승인-제출
-분리**(거래 경로 완성) + **Rank 2 정규장 제출 실증 완료**(2026-06-10 22:30 KST 개장 직후,
-`test_rank2_pending.py RUN` Part 2 통합 — pending→submit→체결 ODNO 0000039098 BUY 1주 @ $292.25 +
-안전 청산 SELL 0000039135 @ $289.35). 텔레그램 메시지 추세+LLM 사유 풍부화.
+throttle이지 알파 아님) + **P1-후속**(2026-06-10, `tools/flipped_day_pnl.py` — flipped uptrend
++1.089% ≈ non-flipped uptrend +0.962% → throttle 확정, strong-down EXIT 시뮬 5종목 -22~-82%p 일관
+→ 구 매도 넛지 제거 정당화), 주문 타이밍 결함 발견·실증(07:30=장종료) + Rank 0 안전패치 + **Rank 2
+승인-제출 분리**(거래 경로 완성) + **Rank 2 정규장 제출 실증 완료**(2026-06-10 22:30 KST 개장 직후,
+`test_rank2_pending.py RUN` Part 2 — pending→submit→체결 ODNO 0000039098 BUY 1주 @ $292.25 + 안전
+청산 SELL 0000039135 @ $289.35). 텔레그램 메시지 추세+LLM 사유 풍부화.
 
 남은 후보:
-1. **P1-후속**: flipped-day P&L 측정(SIGNAL_STRENGTH_ANALYSIS.md).
-2. **P2**: 종목별/변동성 정규화 임계값(Phase 2 반도체 진입 시).
+1. **P2**: 종목별/변동성 정규화 임계값(Phase 2 반도체 진입 시).
+2. **Phase 2 진입**: 반도체 9종목 화이트리스트 추가(NVDA/AMD/AVGO/MU/INTC/QCOM/TXN/AMAT/LRCX/TSM) +
+   `sector.py`(macro_bias) + `researcher.decide_parallel` + `approval.py` 다이제스트 → 실제 NVDA/AVGO
+   매수 경로 개통. 큰 변화·운영 검증 부담.
 
 ## 안전/보안 규칙 (반드시 지킬 것)
 
