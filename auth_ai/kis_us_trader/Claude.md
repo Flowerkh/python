@@ -144,8 +144,9 @@ test 스크립트는 `sys.path`에 루트를 주입하므로 어디서나 import
 - [x] test/ 신규: test_sector(33)·test_llm_advisor(17)·test_researcher(15)·test_daily_trader(10) + test_universe_health.py(서버 실행용) + test_safety_gate NVDA→FAKE 갱신
 - [x] **운영 검증 선결**: 서버 `test/test_universe_health.py` 통과(2026-06-11) — 11종목 전부 paper_tradable=True(가격0·오류 0), `.state/universe_cache.json` 박제. 배포 선결 해제.
 - [ ] **잔여 UX**: approval.py 텔레그램 종목별 토글 다이제스트(현재 per-pick 단건 승인으로 기능 대체됨, 실거동 검증 필요)
+- [x] **라이브 배포 완료(2026-06-11)**: 서버 재배포(66e80dc) + 게이트2 통과(SMH bias=neutral N=2 / OpenAI gpt-5.5) + 오프라인 6스위트 + 서비스 active 단일 PID + state 후방호환 + audit OK(8줄). telegram Conflict(재시작 겹침)는 err 377→377·pgrep 1로 단일폴러 확정 해소. 첫 11종목 사이클 대기.
+- [ ] **2주 운영 검증 진행 중**: 화이트리스트 외 ticker 누출 0 + staged/sector cap 차단 + macro_bias N + 주말 skip + 실거래 라운드트립 (PHASE2_GO_LIVE §3.4 합격기준 10)
 - [ ] **review #8 잔여**: submit_open_orders open_orders 예약 회계(접수-미체결 일일 cap 미반영 갭)
-- [ ] 라이브 배포(337d34a pull + systemd 재시작) + 2주 운영 — 화이트리스트 외 ticker 누출 0 + staged_buys cap 정확 차단 + macro_bias N 의도대로
 
 ### 그 이후 (계획)
 - [ ] Phase 3: weekly_researcher (web_search 매크로 정성 요약 주 1회)
@@ -195,11 +196,12 @@ audit verify, B의 2주 운영 검증은 네이버클라우드 VM 에서 수행 
 AMAT $490 / LRCX $318 / TSM $407. `.state/universe_cache.json` 박제됨. → 반도체 10종목 모의 매매 가능 확인.
 
 남은 후보 (우선순위 순):
-1. **라이브 배포 + 2주 운영 검증** ← 다음 액션. **런북: [docs/PHASE2_GO_LIVE.md](docs/PHASE2_GO_LIVE.md)**.
-   ⚠️ **배포 전 게이트 2개(서버 실측)**: ① `python sector.py` → bias≠unknown·SMH≥50캔들(SMH 모의조회 가능 확인,
-   안 되면 macro_bias unknown→N=0 BUY 영구컷) ② `python llm_advisor.py` → 401 아님(키 무효 시 11종목 조용히 hold).
-   재배포 = stop→backup→`git pull --ff-only`(95fc503)→pip→오프라인테스트→restart→로그/audit 확인. 검증 포인트:
-   화이트리스트 외 ticker 누출 0(`reason_foreign_ticker`), macro_bias N 매핑, staged cap 차단, ET 주말 skip, pending dedup.
+1. **2주 운영 검증 진행 중** ← 현재 단계. 라이브 배포 ✅ **완료(2026-06-11)**. 런북/체크리스트:
+   **[docs/PHASE2_GO_LIVE.md](docs/PHASE2_GO_LIVE.md)**. 배포 요약: 서버 재배포(66e80dc), 게이트 2개 통과
+   (SMH 모의조회 OK→bias=neutral N=2 / OpenAI gpt-5.5 OK), 오프라인 6스위트, 서비스 active 단일 PID,
+   state 후방호환, audit OK(8줄), telegram Conflict(재시작 겹침)는 단일폴러 확정으로 해소. **다음 07:30 KST 첫
+   11종목 사이클 대기**. 2주 합격 기준(PHASE2_GO_LIVE §3.4): 화이트리스트 외 ticker 누출 0(`reason_foreign_ticker`),
+   macro_bias N 매핑, staged/sector cap 차단, ET 주말 skip, pending dedup, 실거래 라운드트립 1~2건, auto_paused 0, audit 무결성.
 2. **잔여 UX — approval.py 다이제스트**: 종목별 토글(기본 OFF) 텔레그램 다이제스트. 현재 per-pick 단건
    승인으로 다중 픽 기능 동작(픽 N개=메시지 N개). 친화도 개선 — 실거동 검증과 함께.
 3. **review #8 잔여 — open_orders 예약 회계**: 제출 루프(`submit_open_orders`)는 staged 미사용이라 접수-미체결
