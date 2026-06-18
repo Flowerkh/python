@@ -13,6 +13,15 @@ from os.path import isfile
 
 import pymysql
 
+# 서명이 패드(viewBox) 테두리를 이만큼 넘어도 정상으로 본다(가로·세로 길이 대비 비율).
+# 이 값을 넘게 패드 밖으로 빠져나가야 '벗어남(비정상)'으로 판정한다.
+#   0.0  → 테두리를 조금이라도 넘으면 '벗어남'(여유 없음)
+#   0.10 → viewBox 가로·세로의 10% 까지는 넘어도 통과(살짝 삐친 정상 서명 허용)
+# 근거: 정상/비정상 샘플 15개 실측 — 정상 서명은 최대 5.9%만 삐침,
+#       비정상(패드 밖으로 크게 빠진 서명)은 12.8~40% 삐침 → 그 사이 10%로 컷.
+#       (단, 패드 안에 완전히 들어온 비정상은 이 방식으로 못 잡음 — 한계)
+OUT_OF_BOUNDS_MARGIN_RATIO = 0.10
+
 
 def get_svg_signature_extent(svg_file_name):
     """모든 좌표의 x, y 범위(가로·세로 길이)를 반환. 빈 파일이면 (0, 0), 파싱 실패면 None."""
@@ -69,8 +78,11 @@ def get_svg_viewbox(svg_file_name):
     return None
 
 
-def is_svg_out_of_bounds(svg_file_name):
-    """서명 좌표가 viewBox 밖으로 벗어났는지 확인. 벗어나면 True, 정상이면 False, 판단불가면 None."""
+def is_svg_out_of_bounds(svg_file_name, margin_ratio=OUT_OF_BOUNDS_MARGIN_RATIO):
+    """서명 좌표가 viewBox(+여유) 밖으로 벗어났는지 확인. 벗어나면 True, 정상이면 False, 판단불가면 None.
+
+    margin_ratio: viewBox 가로·세로 길이에 대한 허용 여유 비율(0.02 = 2%). 0 이면 여유 없음.
+    """
     try:
         tree = ET.parse(svg_file_name)
     except ET.ParseError:
@@ -81,6 +93,8 @@ def is_svg_out_of_bounds(svg_file_name):
         return None  # viewBox 없으면 판단 불가
 
     vx, vy, vw, vh = viewbox
+    margin_x = vw * margin_ratio
+    margin_y = vh * margin_ratio
 
     xs, ys = [], []
     for elem in tree.getroot().iter():
@@ -107,8 +121,8 @@ def is_svg_out_of_bounds(svg_file_name):
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
 
-    return (min_x < vx or max_x > vx + vw or
-            min_y < vy or max_y > vy + vh)
+    return (min_x < vx - margin_x or max_x > vx + vw + margin_x or
+            min_y < vy - margin_y or max_y > vy + vh + margin_y)
 
 
 db = pymysql.connect(
