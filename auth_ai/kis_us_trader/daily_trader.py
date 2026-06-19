@@ -276,14 +276,32 @@ async def daily_cycle(bot):
 
     # 6) 코드가 픽 결정(LLM 우선순위 사용 금지): conf>=threshold BUY 상위 N + SELL.
     selected_buys, sells = select_picks(decisions, n_buys, CONFIDENCE_THRESHOLD)
+
+    # 매수후보 가시화: LLM이 buy로 판단한 종목을 conf 내림차순으로(임계 미달 near-miss 포함).
+    # 동률은 symbol 알파벳순(select_picks 와 동일 정렬). 선정 0이면 왜 안 샀는지 보이게 함.
+    buy_cands = sorted(
+        ((sym, adv.get("confidence", 0)) for sym, adv in decisions.items()
+         if adv.get("action") == "buy"),
+        key=lambda x: (-x[1], x[0]),
+    )
+    if buy_cands:
+        cand_str = " · ".join(f"{s} {c}" for s, c in buy_cands)
+        cand_line = f"\n💡 매수후보(conf): {cand_str}"
+        if not selected_buys:
+            cand_line += f"\n   (임계 conf≥{CONFIDENCE_THRESHOLD} 미달로 미선정)"
+    else:
+        cand_line = "\n💡 매수후보: 없음 (전 종목 hold/sell)"
+
     summary_line = (
         f"{macro_line}\n선정: 매수 {selected_buys or '없음'} / 매도 {sells or '없음'} "
         f"(후보 {len(trends)}종목, 임계 conf≥{CONFIDENCE_THRESHOLD})"
+        f"{cand_line}"
     )
     await bot.send_message(chat_id=CHAT_ID, text=f"📋 점검 요약\n{summary_line}")
     log_cycle("cycle_summary", {"bias": macro["bias"], "n_buys": n_buys,
                                 "selected_buys": selected_buys, "sells": sells,
-                                "candidates": len(trends)})
+                                "candidates": len(trends),
+                                "buy_candidates": [{"symbol": s, "confidence": c} for s, c in buy_cands]})
 
     # 7) 선정 픽 처리(매도 먼저 — 노출 축소 우선, 그다음 매수). 픽 단위 예외 격리.
     for sym in sells + selected_buys:
