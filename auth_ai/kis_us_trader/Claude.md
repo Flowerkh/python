@@ -52,6 +52,7 @@ kis_us_trader/
 ├─ daily_trader.py       # ★현재 메인: 07:30 점검 = 전종목 trend 수집 → sector.macro_bias(N 결정) →
 │                        # researcher.decide_parallel → select_picks(conf≥80 BUY 상위 N + SELL) → 픽별
 │                        # safety_gate→승인→Rank 2 제출(pending 큐잉 → submission_loop 개장 제출).
+│                        # 점검 요약(텔레그램)에 '💡 매수후보(conf)'=LLM buy 종목 conf 내림차순(임계 미달 near-miss 포함) 표시.
 │                        # main_loop(07:30)+submission_loop(개장) asyncio.gather 동시 실행.
 ├─ tools/
 │  ├─ tune_thresholds.py # signal_strength 임계값 분포/방향성 검증(읽기 전용 분석 도구)
@@ -194,6 +195,14 @@ audit verify, B의 2주 운영 검증은 네이버클라우드 VM 에서 수행 
 **배포 선결 해제(2026-06-11)**: 서버 `test/test_universe_health.py` 실측 통과 — 11종목 전부 `paper_tradable=True`
 (가격0·오류 0). AAPL $291 / NVDA $199 / AMD $440 / AVGO $367 / MU $872 / INTC $105 / QCOM $188 / TXN $282 /
 AMAT $490 / LRCX $318 / TSM $407. `.state/universe_cache.json` 박제됨. → 반도체 10종목 모의 매매 가능 확인.
+
+최근 완료(2026-06-19): **점검 요약에 매수후보(conf) 표시** — `daily_trader` 요약 메시지에 `💡 매수후보(conf)` 줄
+추가(LLM이 buy로 본 종목을 confidence 내림차순, 동률 symbol 알파벳순; 선정 0이면 '임계 conf≥80 미달' 사유 명시;
+buy 0이면 '없음(전 종목 hold/sell)'). audit `cycle_summary` 에 `buy_candidates`(symbol/confidence) 추가 →
+2주 검증 추적. 커밋 **0fd83a9 → origin/master push 완료**(⚠️ 서버 git pull + 재시작해야 정기 메시지에 반영).
+실행 검증(2026-06-19 즉시 1회): 3일째 "매수 없음"의 원인이 **LLM conf 72~78 클러스터로 임계 80 미달**임이
+가시화됨(AMAT/LRCX/TSM/TXN 78, AMD 76, INTC/MU 72 — strong 9종목인데 전부 문턱 아래). ⚠️ 일회성 러너로
+라이브 봇과 폴링 겹치면 telegram Conflict → 서버 봇 중지 시에만 로컬 즉시실행(러너는 테스트 후 삭제).
 
 남은 후보 (우선순위 순):
 1. **2주 운영 검증 진행 중** ← 현재 단계. 라이브 배포 ✅ **완료(2026-06-11)**. 런북/체크리스트:
