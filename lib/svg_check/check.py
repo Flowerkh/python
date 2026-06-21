@@ -22,6 +22,11 @@ import pymysql
 #       (단, 패드 안에 완전히 들어온 비정상은 이 방식으로 못 잡음 — 한계)
 OUT_OF_BOUNDS_MARGIN_RATIO = 0.10
 
+# 빈/비정상 SVG 서명 파일은 용량이 작다(뱅크샐러드 빈 파일 등).
+# 이 값보다 작으면 '빈/비정상 서명'으로 보고 알림 → 패드 범위 체크 전에 먼저 거른다.
+# PNG 빈 파일 기준(900Bytes)과 동일하게 잡음.
+SVG_MIN_FILE_SIZE = 900
+
 
 def get_svg_signature_extent(svg_file_name):
     """모든 좌표의 x, y 범위(가로·세로 길이)를 반환. 빈 파일이면 (0, 0), 파싱 실패면 None."""
@@ -169,22 +174,29 @@ for row in result:
             os.path.getsize(png_file_name)) + 'Bytes\n'
         log += '------------------------------------------------------------------------------------------------\n'
 
-    # SVG 체크: 파일 존재 여부 + 파싱 정상 여부 + 패드 범위 벗어남 여부
+    # SVG 체크: 파일 존재 여부 + 용량 + 파싱 정상 여부 + 패드 범위 벗어남 여부
     # (점만 찍힌 서명은 통과)
     if isfile(svg_file_name):
-        extent = get_svg_signature_extent(svg_file_name)
-
-        # 1. 파싱 실패
-        if extent is None:
-            log += 'kit id : ' + kit_id + '\n' + svg_file_name + ' SVG 파싱 실패(비정상 파일)\n'
+        # 1. 용량 확인 — 빈/비정상 서명은 용량이 작다. 패드 범위 체크 전에 먼저 거른다.
+        svg_size = os.path.getsize(svg_file_name)
+        if svg_size < SVG_MIN_FILE_SIZE:
+            log += 'kit id : ' + kit_id + '\n' + svg_file_name + ' size : ' + str(svg_size) + 'Bytes\n'
             log += '------------------------------------------------------------------------------------------------\n'
 
         else:
-            # 2. 서명 좌표가 패드 범위 벗어남
-            out_of_bounds = is_svg_out_of_bounds(svg_file_name)
-            if out_of_bounds:
-                log += 'kit id : ' + kit_id + '\n' + svg_file_name + ' 서명이 패드 범위 벗어남\n'
+            extent = get_svg_signature_extent(svg_file_name)
+
+            # 2. 파싱 실패
+            if extent is None:
+                log += 'kit id : ' + kit_id + '\n' + svg_file_name + ' SVG 파싱 실패(비정상 파일)\n'
                 log += '------------------------------------------------------------------------------------------------\n'
+
+            else:
+                # 3. 서명 좌표가 패드 범위 벗어남
+                out_of_bounds = is_svg_out_of_bounds(svg_file_name)
+                if out_of_bounds:
+                    log += 'kit id : ' + kit_id + '\n' + svg_file_name + ' 서명이 패드 범위 벗어남\n'
+                    log += '------------------------------------------------------------------------------------------------\n'
 
     # SVG 파일 자체가 없는 경우
     else:
