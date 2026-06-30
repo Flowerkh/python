@@ -1,51 +1,55 @@
+import requests
+import json
 import os
 import re
-import time
-import requests
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 from dotenv import load_dotenv
 
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SENDER_PW = os.getenv("SENDER_PW")
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SENDER_EMAIL = "mbp.prd@macrogen.com"
+SENDER_PW = os.getenv("SENDER_PW")
 RECEIVER_LIST = [
     "sj99146@macrogen.com"
-    , "hoban@macrogen.com"
-    , "kimjihan@macrogen.com"
-]
-#LOG_FILE = "/var/log/httpd/error_log"  # 실서버 경로
-LOG_FILE = "C:/Users/김경하/Desktop/기타/error_log"
-POS_FILE = "tmp/log_last_pos.txt"
+    #, "hoban@macrogen.com"
+    #, "kimjihan@macrogen.com"
+                 ]
+LOG_FILE = "/var/log/httpd/error_log"  # 실서버 경로
+#LOG_FILE = "C:/Users/김경하/Desktop/기타/error_log"  # 실서버 경로
+POS_FILE = "/script/tmp/log_last_pos.txt"  #마지막 읽은 위치 저장 파일
 
-# 1. AI 분석 함수 (Gemini API - requests 방식)
+# 1. AI 분석 함수
 def get_ai_analysis(logs, is_security=False):
     if not logs: return ""
+    url = "https://api.openai.com/v1/chat/completions"
     role = "보안 전문가" if is_security else "PHP 개발 전문가"
-    prompt = f"당신은 {role}입니다. 로그를 분석하여 원인과 해결책을 번호 순서대로 한국어로 요약하세요.\n\n{logs}"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
 
-    max_retry = 3
-    for attempt in range(max_retry):
-        try:
-            res = requests.post(url,
-                headers={"Content-Type": "application/json"},
-                json={"contents": [{"parts": [{"text": prompt}]}]},
-                timeout=30
-            )
-            return res.json()['candidates'][0]['content']['parts'][0]['text']
-        except Exception as e:
-            print(f"AI 분석 실패 ({attempt+1}/{max_retry}): {e}")
-            if attempt < max_retry - 1:
-                wait = (attempt + 1) * 10
-                print(f"{wait}초 후 재시도...")
-                time.sleep(wait)
+    data = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": f"당신은 {role}입니다. 로그를 분석하여 원인과 해결책을 번호 순서대로 한국어로 요약하세요."},
+            {"role": "user", "content": logs}
+        ]
+    }
+    try:
+        res = requests.post(url,
+                            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                            data=json.dumps(data), timeout=60)
+        result = res.json()
+        if 'choices' not in result:
+            print(f"AI API 오류 응답: {result}")
+            return "AI 분석 실패"
+        return result['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"AI 분석 예외: {e}")
+        return "AI 분석 실패"
 
-    return "AI 분석 실패"
-
-# 2. 로그 증분 분석 함수
+# 2. 로그 증분 분석 함수 (새로 추가된 로그만 읽기)
 def get_new_logs(file_path):
     exclude_k = ["php notice", "php warning", "undefined variable", "missing argument", '"result_cd":"s"',
                  "### send_data", "### url"]
@@ -54,9 +58,11 @@ def get_new_logs(file_path):
     normal_errors = []
     security_threats = []
 
-    if not os.path.exists(file_path): return "", "", 0
+    if not os.path.exists(file_path): return "", ""
     current_size = os.path.getsize(file_path)
 
+    # 마지막 읽은 위치 불러오기
+    # 마지막 읽은 위치 불러오기
     last_pos = 0
     if os.path.exists(POS_FILE):
         with open(POS_FILE, 'r') as f:
@@ -70,15 +76,19 @@ def get_new_logs(file_path):
         last_pos = 0
     elif current_size == last_pos:
         print("-- 디버깅: 추가된 로그가 용량상 전혀 없습니다.")
-        return "", "", last_pos
+        return "", ""
+
+    # 로그 로테이션(파일이 새로 교체됨) 발생 시 처음부터 읽기
+    if current_size < last_pos: last_pos = 0
 
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-        f.seek(last_pos)
+        f.seek(last_pos)  # 마지막 지점으로 점프
 
         for line in f:
             line_lower = line.lower()
             if any(ex in line_lower for ex in exclude_k): continue
 
+            # 시간 및 분류 로직
             time_match = re.search(r'(\d{2}):\d{2}:\d{2}', line)
             if time_match:
                 hour = int(time_match.group(1))
@@ -91,7 +101,7 @@ def get_new_logs(file_path):
         with open(POS_FILE, 'w') as f_pos:
             f_pos.write(str(new_pos))
 
-    return "\n".join(normal_errors), "\n".join(security_threats), new_pos
+    return "\n".join(normal_errors), "\n".join(security_threats)
 
 def send_email(subject, content):
     try:
@@ -106,12 +116,12 @@ def send_email(subject, content):
             server.sendmail(SENDER_EMAIL, RECEIVER_LIST, msg.as_string())
         return True
     except Exception as e:
-        print(f"이메일 발송 에러: {e}")
+        print("이메일 발송 에러 발생.")
         return False
 
 # 3. 메인 실행
 if __name__ == "__main__":
-    errors, threats, new_pos = get_new_logs(LOG_FILE)
+    errors, threats = get_new_logs(LOG_FILE)
     report = ""
 
     if errors:
@@ -130,10 +140,12 @@ if __name__ == "__main__":
         report += threats + "\n\n"
         report += "=" * 50 + "\n\n"
 
+    # 4. 리포트가 생성되었다면 이메일 발송
     if report:
         print("이메일 발송 중...")
         error_count = len(errors.split('\n')) if errors else 0
         threat_count = len(threats.split('\n')) if threats else 0
+
         subject = f"[서버 알림] 에러({error_count}건) 및 보안({threat_count}건) 통합 분석 보고서"
 
         if send_email(subject, report):
