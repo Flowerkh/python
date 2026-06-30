@@ -1,7 +1,7 @@
 # -*-coding:utf-8-*-
 # :::::::::::::: 서명 이미지 용량 확인 스크립트               ::::::::::::::
 # :::::::::::::: by. jack                                ::::::::::::::
-# :::::::::::::: by. way 26.06.15 수정                     ::::::::::::::
+# :::::::::::::: by. way 26.06.23 수정                     ::::::::::::::
 import os
 import re
 import smtplib
@@ -183,11 +183,8 @@ for row in result:
             log += 'kit id : ' + kit_id + '\n' + svg_file_name + ' size : ' + str(svg_size) + 'Bytes\n'
             log += '------------------------------------------------------------------------------------------------\n'
 
-        else:
-            extent = get_svg_signature_extent(svg_file_name)
-
             # 2. 파싱 실패
-            if extent is None:
+            if get_svg_signature_extent(svg_file_name) is None:
                 log += 'kit id : ' + kit_id + '\n' + svg_file_name + ' SVG 파싱 실패(비정상 파일)\n'
                 log += '------------------------------------------------------------------------------------------------\n'
 
