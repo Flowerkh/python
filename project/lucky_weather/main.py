@@ -12,6 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from weather import get_seoul_weather_today
 from air_quality import get_seoul_air_quality
+from exchange import get_exchange_rates
 from lucky import get_lucky
 
 # 같은 폴더의 .env에서 텔레그램 토큰/챗ID 로드
@@ -93,6 +94,16 @@ if __name__ == "__main__":
         for key in am:
             p(f"  {key}: {am[key]} / {pm.get(key, '-')}")
         p("")
+
+    # ── 환율 ──
+    p("=== 환율 ===")
+    rates = get_exchange_rates()
+    if "error" in rates:
+        p(rates["error"])
+    else:
+        for key, value in rates.items():
+            p(f"  {key}: {value}")
+    p("")
 
     # ── 운세 ──
     p("=== 운세 ===")
