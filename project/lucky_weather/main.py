@@ -11,7 +11,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from weather import get_today_weather
-from air_quality import get_seoul_air_quality
+from kbo import get_kbo_games
 from exchange import get_exchange_rates
 from lucky import get_lucky
 
@@ -56,14 +56,14 @@ if __name__ == "__main__":
     p = lambda text: _print_and_collect(text, output_parts)
 
     p(f"=== {today} ===")
-    # ── 미세먼지 ──
-    p(f"=== 미세먼지 ===")
-    air = get_seoul_air_quality()
-    if "error" in air:
-        p(air["error"])
+    # ── KBO ──
+    p(f"=== 오늘 KBO ===")
+    kbo = get_kbo_games()
+    if "error" in kbo:
+        p(kbo["error"])
     else:
-        for key, value in air.items():
-            p(f"  {key}: {value}")
+        for line in kbo["lines"]:
+            p(line)
     p("")
 
     # ── 날씨 ──
