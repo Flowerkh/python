@@ -1,6 +1,3 @@
-import unicodedata
-from collections import Counter
-
 import requests
 
 # Open-Meteo: 무료·키 불필요. 요청 1회로 여러 좌표를 동시에 받을 수 있다.
@@ -21,29 +18,31 @@ CITIES = [
 DAY_HOURS = range(6, 19)  # 06~18시
 
 # WMO weather code -> (한글, 이모지)
+# 계열이 다르면 이모지도 반드시 다르게 둔다. 이슬비와 비가 같은 그림이면
+# 한눈에 구분이 안 된다. 세기(약/보통/강)는 계열 안에서 합쳤다.
 _WMO = {
+    # 맑음 ~ 흐림
     0: ("맑음", "☀"), 1: ("대체로 맑음", "🌤"), 2: ("구름 조금", "⛅"), 3: ("흐림", "☁"),
+    # 안개
     45: ("안개", "🌫"), 48: ("상고대 안개", "🌫"),
-    51: ("약한 이슬비", "🌦"), 53: ("이슬비", "🌦"), 55: ("강한 이슬비", "🌦"),
-    56: ("어는 이슬비", "🌧"), 57: ("강한 어는 이슬비", "🌧"),
-    61: ("약한 비", "🌦"), 63: ("비", "🌧"), 65: ("강한 비", "🌧"),
-    66: ("어는 비", "🌧"), 67: ("강한 어는 비", "🌧"),
-    71: ("약한 눈", "🌨"), 73: ("눈", "🌨"), 75: ("강한 눈", "❄"), 77: ("싸락눈", "🌨"),
-    80: ("약한 소나기", "🌦"), 81: ("소나기", "🌧"), 82: ("강한 소나기", "⛈"),
-    85: ("약한 눈소나기", "🌨"), 86: ("강한 눈소나기", "❄"),
+    # 이슬비
+    51: ("약한 이슬비", "💧"), 53: ("이슬비", "💧"), 55: ("강한 이슬비", "💧"),
+    # 비
+    61: ("약한 비", "🌧"), 63: ("비", "🌧"), 65: ("강한 비", "🌧"),
+    # 소나기
+    80: ("약한 소나기", "🌦"), 81: ("소나기", "🌦"), 82: ("강한 소나기", "🌦"),
+    # 눈
+    71: ("약한 눈", "🌨"), 73: ("눈", "🌨"), 75: ("강한 눈", "🌨"), 77: ("싸락눈", "🌨"),
+    # 눈 소나기
+    85: ("약한 눈소나기", "❄"), 86: ("강한 눈소나기", "❄"),
+    # 뇌우
     95: ("뇌우", "⛈"), 96: ("뇌우/우박", "⛈"), 99: ("강한 뇌우/우박", "⛈"),
+    # 어는 비 계열 (국내에서는 드물다)
+    56: ("어는 이슬비", "🥶"), 57: ("강한 어는 이슬비", "🥶"),
+    66: ("어는 비", "🥶"), 67: ("강한 어는 비", "🥶"),
 }
 
 _session = requests.Session()
-
-
-def _display_width(text: str) -> int:
-    """한글·이모지는 두 칸을 차지하므로 폭을 따로 센다."""
-    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
-
-
-def _pad(text: str, width: int) -> str:
-    return text + " " * max(0, width - _display_width(text))
 
 
 def _summarize(hourly: dict) -> dict:
@@ -57,22 +56,21 @@ def _summarize(hourly: dict) -> dict:
     winds = [hourly["wind_speed_10m"][i] for i in idx]
     codes = [hourly["weather_code"][i] for i in idx]
 
-    # 하루를 대표하는 날씨는 가장 궂은 쪽으로 잡는다. WMO 코드는 대체로
-    # 값이 클수록 궂은 날씨라, 잠깐이라도 비가 오면 그걸 알려주는 편이 낫다.
-    desc, icon = _WMO.get(max(codes), ("알 수 없음", "❔"))
+    # 하루 대표 날씨는 가장 궂은 쪽으로 잡는다. WMO 코드는 대체로 값이
+    # 클수록 궂은 날씨라, 잠깐이라도 비가 오면 그걸 알려주는 편이 낫다.
+    icon = _WMO.get(max(codes), ("알 수 없음", "❔"))[1]
 
     return {
         "low": round(min(temps)),
         "high": round(max(temps)),
         "rain": max(rains),
         "wind": round(sum(winds) / len(winds), 1),
-        "desc": desc,
         "icon": icon,
     }
 
 
 def get_today_weather() -> dict:
-    """수원·서울·화성·송도의 오늘 날씨를 요청 1회로 가져와 한 줄씩 요약합니다."""
+    """서울·수원·화성·송도의 오늘 날씨를 요청 1회로 가져와 한 줄씩 요약합니다."""
     try:
         response = _session.get(
             FORECAST_URL,
@@ -102,14 +100,12 @@ def get_today_weather() -> dict:
         try:
             s = _summarize(block["hourly"])
         except (KeyError, TypeError, ValueError, IndexError) as e:
-            lines.append(f"{name}  조회 실패({e})")
+            lines.append(f"{name} 조회 실패({e})")
             continue
 
-        temp = f"{s['low']}~{s['high']}°C"
         lines.append(
-            f"{s['icon']} {_pad(name, 6)}{_pad(temp, 10)}"
-            f"{_pad('☔' + str(s['rain']) + '%', 8)}"
-            f"{_pad('💨' + str(s['wind']) + 'km/h', 12)}{s['desc']}"
+            f"{s['icon']}{name} {s['low']}/{s['high']}도 "
+            f"☔{s['rain']}% 💨{s['wind']}km/h"
         )
 
     return {"lines": lines}
