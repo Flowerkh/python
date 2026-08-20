@@ -55,6 +55,7 @@ if __name__ == "__main__":
     output_parts = []
     p = lambda text: _print_and_collect(text, output_parts)
 
+    p(f"=== {today} ===")
     # ── 미세먼지 ──
     p(f"=== 미세먼지 ===")
     air = get_seoul_air_quality()
@@ -66,7 +67,7 @@ if __name__ == "__main__":
     p("")
 
     # ── 날씨 ──
-    p(f"=== 날씨 ({today}) ===")
+    p(f"=== 날씨 ===")
     weather = get_seoul_weather_today()
     if "error" in weather:
         p(weather["error"])

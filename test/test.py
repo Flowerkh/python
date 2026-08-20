@@ -1,66 +1,82 @@
-"""
-OpenAI API 연결 및 동작 확인용 스크립트.
+import requests
 
-사용법:
-    1) 환경변수에 API 키 설정
-         PowerShell:  $env:OPENAI_API_KEY = "sk-..."
-         CMD:         set OPENAI_API_KEY=sk-...
-    2) 실행
-         python test.py
-
-    또는 모델 지정:
-         python test.py gpt-4o-mini
-"""
-import os
-import sys
-
-
-def main():
-    model = sys.argv[1] if len(sys.argv) > 1 else "gpt-5.5"
-
-    api_key = "sk-xxxxxxxxxxxxxxxx"
-    if not api_key:
-        print("[실패] 환경변수 OPENAI_API_KEY가 설정되지 않았습니다.")
-        print('  PowerShell:  $env:OPENAI_API_KEY = "sk-..."')
-        sys.exit(1)
+def get_exchange_rate(base: str, target: str = "KRW") -> float | None:
+    """
+    단일 통화 환율 조회 (Frankfurter API - ECB 기준, 무료, 키 불필요)
+    :param base: 기준 통화 (예: 'USD', 'EUR')
+    :param target: 대상 통화 (예: 'KRW')
+    :return: 환율 값 (1 base = ? target), 실패 시 None
+    """
+    url = "https://api.frankfurter.app/latest"
+    params = {"from": base, "to": target}
 
     try:
-        from openai import OpenAI
-    except ImportError:
-        print("[실패] openai 패키지가 설치되지 않았습니다.  pip install openai")
-        sys.exit(1)
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
 
-    client = OpenAI(api_key=api_key)
+        rate = data.get("rates", {}).get(target)
+        if rate is None:
+            print(f"환율 데이터 파싱 실패: {data}")
+            return None
 
-    print(f"모델: {model}")
-    print("OpenAI API 호출 중...\n")
+        return float(rate)
+
+    except requests.exceptions.RequestException as e:
+        print(f"환율 API 호출 실패: {e}")
+        return None
+
+
+def get_multiple_rates(targets: list[str], base: str = "KRW") -> dict:
+    """
+    여러 통화 환율을 한 번에 조회 (요청 1회로 처리)
+    :param targets: 대상 통화 리스트 (예: ['USD', 'EUR'])
+    :param base: 기준 통화 (기본 KRW)
+    :return: {"USD": 1350.5, "EUR": 1580.2, "date": "2026-08-18"}
+    """
+    url = "https://api.frankfurter.app/latest"
+    params = {"from": base, "to": ",".join(targets)}
 
     try:
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "너는 간결하게 답하는 테스트 도우미야."},
-                {"role": "user", "content": "연결 테스트입니다. 'OK'라고만 답해줘."},
-            ],
-            # GPT-5 계열(reasoning 모델)은 max_tokens 대신 max_completion_tokens 사용.
-            # reasoning 토큰을 함께 소비하므로 한도를 충분히 줘야 응답이 비지 않음.
-            max_completion_tokens=2000,
-        )
-    except Exception as e:
-        print(f"[실패] API 호출 중 오류 발생: {type(e).__name__}: {e}")
-        sys.exit(1)
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
 
-    answer = resp.choices[0].message.content
-    usage = resp.usage
+        rates = data.get("rates", {})
+        if not rates:
+            return {}
 
-    print("[성공] OpenAI API 연결 정상")
-    print(f"  응답: {answer.strip()!r}")
-    if usage:
-        print(
-            f"  토큰: prompt={usage.prompt_tokens}, "
-            f"completion={usage.completion_tokens}, total={usage.total_tokens}"
-        )
+        # KRW 기준 1당 외화 값이므로, "외화 1당 KRW" 형태로 역산
+        result = {
+            currency: round(1 / rate, 2)
+            for currency, rate in rates.items()
+            if rate > 0
+        }
+        result["date"] = data.get("date")
+
+        return result
+
+    except requests.exceptions.RequestException as e:
+        print(f"환율 API 호출 실패: {e}")
+        return {}
 
 
+# ===== 사용 예시 =====
 if __name__ == "__main__":
-    main()
+    # 방법 1: 개별 조회
+    usd_to_krw = get_exchange_rate("USD", "KRW")
+    eur_to_krw = get_exchange_rate("EUR", "KRW")
+
+    print("---")
+
+    # 방법 2: 한 번의 요청으로 여러 통화 조회 (추천, 효율적)
+    rates = get_multiple_rates(["USD", "EUR", "JPY"])
+    jpy_rate = rates.get("JPY", 0)
+
+    if rates:
+        print(f"기준일: {rates.get('date')}")
+        print(f"1 USD = {rates.get('USD', 0):,.2f}원")
+        print(f"1 EUR = {rates.get('EUR', 0):,.2f}원")
+        print(f"100 JPY = {jpy_rate * 100:,.2f}원")
+    else:
+        print("환율 조회 실패")
