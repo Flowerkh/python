@@ -1,102 +1,115 @@
+import unicodedata
+from collections import Counter
+
 import requests
-import urllib3
-from collections import defaultdict
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# Open-Meteo: 무료·키 불필요. 요청 1회로 여러 좌표를 동시에 받을 수 있다.
+FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
-_WEATHER_KO = {
-    "Sunny": "맑음",
-    "Clear": "맑음",
-    "Partly Cloudy": "구름 조금",
-    "Partly cloudy": "구름 조금",
-    "Cloudy": "흐림",
-    "Overcast": "흐림",
-    "Mist": "안개",
-    "Fog": "안개",
-    "Freezing fog": "결빙 안개",
-    "Patchy rain nearby": "근처 간헐적 비",
-    "Patchy rain possible": "비 가능성",
-    "Patchy light rain": "간헐적 가랑비",
-    "Light rain": "가벼운 비",
-    "Light drizzle": "이슬비",
-    "Patchy light drizzle": "간헐적 이슬비",
-    "Light rain shower": "가벼운 소나기",
-    "Moderate rain": "비",
-    "Moderate rain at times": "간헐적 비",
-    "Heavy rain": "폭우",
-    "Heavy rain at times": "간헐적 폭우",
-    "Torrential rain shower": "집중 호우",
-    "Moderate or heavy rain shower": "강한 소나기",
-    "Light freezing rain": "가벼운 결빙 비",
-    "Moderate or heavy freezing rain": "강한 결빙 비",
-    "Patchy snow possible": "눈 가능성",
-    "Patchy light snow": "간헐적 가벼운 눈",
-    "Light snow": "가벼운 눈",
-    "Light snow showers": "가벼운 눈 소나기",
-    "Moderate snow": "눈",
-    "Heavy snow": "폭설",
-    "Moderate or heavy snow showers": "강한 눈 소나기",
-    "Blowing snow": "눈보라",
-    "Blizzard": "폭풍설",
-    "Ice pellets": "우박",
-    "Light sleet": "가벼운 진눈깨비",
-    "Light sleet showers": "가벼운 진눈깨비 소나기",
-    "Moderate or heavy sleet": "강한 진눈깨비",
-    "Moderate or heavy sleet showers": "강한 진눈깨비 소나기",
-    "Thundery outbreaks possible": "천둥 가능성",
-    "Patchy light rain with thunder": "천둥 동반 가벼운 비",
-    "Moderate or heavy rain with thunder": "천둥 동반 강한 비",
-    "Patchy light snow with thunder": "천둥 동반 가벼운 눈",
-    "Moderate or heavy snow with thunder": "천둥 동반 폭설",
+CONNECT_TIMEOUT = 5
+READ_TIMEOUT = 15
+
+# (표시명, 위도, 경도)
+CITIES = [
+    ("서울", 37.5665, 126.9780),  # 서울시청
+    ("수원", 37.2636, 127.0286),  # 수원시청
+    ("화성", 37.1996, 126.8314),  # 경기 화성시청
+    ("송도", 37.3826, 126.6435),  # 인천 연수구 송도동
+]
+
+# 낮 시간대만 본다. 새벽은 출근 전 리포트에 의미가 적다.
+DAY_HOURS = range(6, 19)  # 06~18시
+
+# WMO weather code -> (한글, 이모지)
+_WMO = {
+    0: ("맑음", "☀"), 1: ("대체로 맑음", "🌤"), 2: ("구름 조금", "⛅"), 3: ("흐림", "☁"),
+    45: ("안개", "🌫"), 48: ("상고대 안개", "🌫"),
+    51: ("약한 이슬비", "🌦"), 53: ("이슬비", "🌦"), 55: ("강한 이슬비", "🌦"),
+    56: ("어는 이슬비", "🌧"), 57: ("강한 어는 이슬비", "🌧"),
+    61: ("약한 비", "🌦"), 63: ("비", "🌧"), 65: ("강한 비", "🌧"),
+    66: ("어는 비", "🌧"), 67: ("강한 어는 비", "🌧"),
+    71: ("약한 눈", "🌨"), 73: ("눈", "🌨"), 75: ("강한 눈", "❄"), 77: ("싸락눈", "🌨"),
+    80: ("약한 소나기", "🌦"), 81: ("소나기", "🌧"), 82: ("강한 소나기", "⛈"),
+    85: ("약한 눈소나기", "🌨"), 86: ("강한 눈소나기", "❄"),
+    95: ("뇌우", "⛈"), 96: ("뇌우/우박", "⛈"), 99: ("강한 뇌우/우박", "⛈"),
 }
 
-
-def _translate_weather(desc: str) -> str:
-    return _WEATHER_KO.get(desc.strip(), desc)
+_session = requests.Session()
 
 
-def get_seoul_weather_today() -> dict:
-    """서울의 오늘 오전/오후 날씨 예보를 가져옵니다. (wttr.in)"""
-    try:
-        response = requests.get(
-            "https://wttr.in/Seoul?format=j1&lang=ko",
-            timeout=(30, 30),
-            headers={"User-Agent": "curl/7.0"},
-            verify=False
-        )
-        response.raise_for_status()
-        data = response.json()
-        return _summarize_am_pm(data)
-    except requests.RequestException as e:
-        return {"error": f"날씨 정보를 가져오는데 실패했습니다: {e}"}
+def _display_width(text: str) -> int:
+    """한글·이모지는 두 칸을 차지하므로 폭을 따로 센다."""
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
 
 
-def _summarize_am_pm(data: dict) -> dict:
-    """wttr.in 데이터를 오전/오후로 요약합니다."""
-    today = data["weather"][0]
+def _pad(text: str, width: int) -> str:
+    return text + " " * max(0, width - _display_width(text))
 
-    # hourly: 0=자정, 1=오전3시, 2=오전6시, 3=오전9시,
-    #         4=정오,  5=오후3시, 6=오후6시, 7=오후9시
-    hourly = today["hourly"]
-    am_slots = hourly[0:4]  # 0~9시
-    pm_slots = hourly[4:8]  # 12~21시
 
-    def summarize(slots):
-        temps      = [int(s["tempC"]) for s in slots]
-        humidity   = [int(s["humidity"]) for s in slots]
-        rain_prob  = [int(s["chanceofrain"]) for s in slots]
-        wind       = [int(s["windspeedKmph"]) for s in slots]
-        descs      = [_translate_weather(s["weatherDesc"][0]["value"]) for s in slots]
-        return {
-            "최저기온":    f"{min(temps)}°C",
-            "최고기온":    f"{max(temps)}°C",
-            "평균습도":    f"{round(sum(humidity) / len(humidity))}%",
-            "최대강수확률": f"{max(rain_prob)}%",
-            "평균풍속":    f"{round(sum(wind) / len(wind), 1)} km/h",
-            "날씨":       descs[2],  # 대표 시간대 설명
-        }
+def _summarize(hourly: dict) -> dict:
+    """한 지점의 낮 시간대를 하루 한 줄 분량으로 압축합니다."""
+    idx = [h for h in DAY_HOURS if h < len(hourly["time"])]
+    if not idx:
+        raise ValueError("예보 시간대 없음")
+
+    temps = [hourly["temperature_2m"][i] for i in idx]
+    rains = [hourly["precipitation_probability"][i] or 0 for i in idx]
+    winds = [hourly["wind_speed_10m"][i] for i in idx]
+    codes = [hourly["weather_code"][i] for i in idx]
+
+    # 하루를 대표하는 날씨는 가장 궂은 쪽으로 잡는다. WMO 코드는 대체로
+    # 값이 클수록 궂은 날씨라, 잠깐이라도 비가 오면 그걸 알려주는 편이 낫다.
+    desc, icon = _WMO.get(max(codes), ("알 수 없음", "❔"))
 
     return {
-        "오전": summarize(am_slots),
-        "오후": summarize(pm_slots),
+        "low": round(min(temps)),
+        "high": round(max(temps)),
+        "rain": max(rains),
+        "wind": round(sum(winds) / len(winds), 1),
+        "desc": desc,
+        "icon": icon,
     }
+
+
+def get_today_weather() -> dict:
+    """수원·서울·화성·송도의 오늘 날씨를 요청 1회로 가져와 한 줄씩 요약합니다."""
+    try:
+        response = _session.get(
+            FORECAST_URL,
+            params={
+                "latitude": ",".join(str(lat) for _, lat, _ in CITIES),
+                "longitude": ",".join(str(lon) for _, _, lon in CITIES),
+                "hourly": "temperature_2m,precipitation_probability,"
+                          "weather_code,wind_speed_10m",
+                "timezone": "Asia/Seoul",
+                "forecast_days": 1,
+            },
+            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+        )
+        response.raise_for_status()
+        blocks = response.json()
+    except (requests.RequestException, ValueError) as e:
+        return {"error": f"날씨 정보 조회 실패: {e}"}
+
+    # 좌표를 하나만 넘기면 리스트가 아닌 단일 객체로 온다.
+    if isinstance(blocks, dict):
+        blocks = [blocks]
+    if len(blocks) != len(CITIES):
+        return {"error": f"날씨 응답 지점 수 불일치({len(blocks)}/{len(CITIES)})"}
+
+    lines = []
+    for (name, _, _), block in zip(CITIES, blocks):
+        try:
+            s = _summarize(block["hourly"])
+        except (KeyError, TypeError, ValueError, IndexError) as e:
+            lines.append(f"{name}  조회 실패({e})")
+            continue
+
+        temp = f"{s['low']}~{s['high']}°C"
+        lines.append(
+            f"{s['icon']} {_pad(name, 6)}{_pad(temp, 10)}"
+            f"{_pad('☔' + str(s['rain']) + '%', 8)}"
+            f"{_pad('💨' + str(s['wind']) + 'km/h', 12)}{s['desc']}"
+        )
+
+    return {"lines": lines}

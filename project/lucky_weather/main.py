@@ -10,7 +10,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-from weather import get_seoul_weather_today
+from weather import get_today_weather
 from air_quality import get_seoul_air_quality
 from exchange import get_exchange_rates
 from lucky import get_lucky
@@ -68,16 +68,13 @@ if __name__ == "__main__":
 
     # ── 날씨 ──
     p(f"=== 날씨 ===")
-    weather = get_seoul_weather_today()
+    weather = get_today_weather()
     if "error" in weather:
         p(weather["error"])
     else:
-        am = weather.get("오전", {})
-        pm = weather.get("오후", {})
-        p("[오전/오후]")
-        for key in am:
-            p(f"  {key}: {am[key]} / {pm.get(key, '-')}")
-        p("")
+        for line in weather["lines"]:
+            p(line)
+    p("")
 
     # ── 환율 ──
     p("=== 환율 ===")
