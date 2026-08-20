@@ -19,23 +19,6 @@ from lucky import get_lucky
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 
-def load_env(path: str) -> None:
-    """python-dotenv 없이 .env 파일을 직접 파싱해 os.environ에 넣습니다."""
-    if not os.path.exists(path):
-        return
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
-
-
-# 같은 폴더의 .env에서 텔레그램 토큰/챗ID 로드
-load_env(os.path.join(os.path.dirname(__file__), ".env"))
-
-
 def _print_and_collect(text: str, parts: list) -> None:
     print(text)
     parts.append(text)
