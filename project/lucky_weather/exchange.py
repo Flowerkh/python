@@ -42,5 +42,4 @@ def get_exchange_rates() -> dict:
         label = f"{unit} {code}" if unit != 1 else f"1 {code}"
         result[label] = f"{krw:,.2f}원"
 
-    result["기준일"] = data.get("date", "-")
     return result
