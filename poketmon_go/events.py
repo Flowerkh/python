@@ -38,6 +38,10 @@ HEADING_EMOJI = {
 }
 DEFAULT_EMOJI = "📌"
 
+# 시즌·GO 패스·장기 리서치처럼 몇 주씩 이어지는 이벤트는 시작 직후에만 보여준다.
+# 안 그러면 몇 달 전에 시작한 이벤트가 매일 맨 위에 올라와 지난 정보처럼 보인다.
+LONG_EVENT_DAYS = 14
+
 _session = requests.Session()
 
 # ── 레이드 보스 한글 번역 ──
@@ -346,6 +350,12 @@ def get_pokemon_events(days: int = 7) -> dict:
             continue
         # 이번 주 안에 걸쳐 있는 이벤트만: 아직 끝나지 않았고 이번 주 안에 시작한다
         if end >= now and start <= window_end:
+            # 장기 이벤트는 시작한 지 `days`일이 지나면 숨긴다.
+            # 레이드는 지금 잡을 수 있는 보스라 기간이 길어도 계속 보여준다.
+            if (e.get("eventType") != "raid-battles"
+                    and end - start > timedelta(days=LONG_EVENT_DAYS)
+                    and start < now - timedelta(days=days)):
+                continue
             rows.append((start, end, e))
 
     if not rows:
