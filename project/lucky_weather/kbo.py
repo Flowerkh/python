@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 import requests
@@ -10,12 +11,18 @@ SCHEDULE_URL = "https://api-gw.sports.naver.com/schedule/games"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/130.0 Safari/537.36",
     "Referer": "https://m.sports.naver.com/",
 }
 
 CONNECT_TIMEOUT = 5
 READ_TIMEOUT = 15
+
+# 네이버 게이트웨이는 가끔 에러 없이 응답을 붙잡고 있는다(정상일 땐 1초 안쪽).
+# 한 번 오래 기다리기보다 짧게 끊고 다시 요청하는 편이 빨리 성공한다.
+SCHEDULE_READ_TIMEOUT = 5
+SCHEDULE_RETRIES = 3
 
 # 구장 좌표. 경기 시각 날씨를 붙이는 데 쓴다.
 STADIUM_LATLON = {
@@ -43,19 +50,26 @@ _session = requests.Session()
 
 
 def _fetch_games(date: str) -> list:
-    response = _session.get(
-        SCHEDULE_URL,
-        params={
-            "fields": "basic,statusNum,statusInfo,cancel,stadium,"
-                      "homeStarterName,awayStarterName",
-            "categoryId": "kbo",
-            "fromDate": date,
-            "toDate": date,
-            "size": 100,
-        },
-        headers=HEADERS,
-        timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
-    )
+    for attempt in range(1, SCHEDULE_RETRIES + 1):
+        try:
+            response = _session.get(
+                SCHEDULE_URL,
+                params={
+                    "fields": "basic,statusNum,statusInfo,cancel,stadium,"
+                              "homeStarterName,awayStarterName",
+                    "categoryId": "kbo",
+                    "fromDate": date,
+                    "toDate": date,
+                    "size": 100,
+                },
+                headers=HEADERS,
+                timeout=(CONNECT_TIMEOUT, SCHEDULE_READ_TIMEOUT),
+            )
+            break
+        except (requests.ConnectionError, requests.Timeout):
+            if attempt == SCHEDULE_RETRIES:
+                raise
+            time.sleep(attempt)
     response.raise_for_status()
     return response.json()["result"]["games"]
 
