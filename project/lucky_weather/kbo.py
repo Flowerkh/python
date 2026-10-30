@@ -72,7 +72,7 @@ def _fetch_stadium_hourly(stadiums: list) -> dict:
             params={
                 "latitude": ",".join(str(STADIUM_LATLON[s][0]) for s in known),
                 "longitude": ",".join(str(STADIUM_LATLON[s][1]) for s in known),
-                "hourly": "temperature_2m,weather_code",
+                "hourly": "weather_code",
                 "timezone": "Asia/Seoul",
                 "forecast_days": 1,
             },
@@ -92,9 +92,9 @@ def _fetch_stadium_hourly(stadiums: list) -> dict:
 
 
 def _weather_prefix(stadium: str, hourly: dict, hour: int) -> str:
-    """경기 시간대의 날씨를 접두사로 만든다. 낮 평균이 아니라 경기 시각이 핵심이다."""
+    """경기 시간대의 날씨를 아이콘 하나로 만든다. 낮 평균이 아니라 경기 시각이 핵심이다."""
     if stadium in DOME:
-        return "🏟돔 "
+        return "🏟 "
     if not hourly:
         return ""
 
@@ -103,12 +103,11 @@ def _weather_prefix(stadium: str, hourly: dict, hour: int) -> str:
                if h < len(hourly["time"])]
         if not idx:
             return ""
-        temp = round(hourly["temperature_2m"][hour])
         code = max(hourly["weather_code"][i] for i in idx)
     except (KeyError, IndexError, TypeError, ValueError):
         return ""
 
-    return f"{WMO.get(code, ('알 수 없음', '❔'))[1]}{temp}도 "
+    return f"{WMO.get(code, ('알 수 없음', '❔'))[1]} "
 
 
 def _format(game: dict, sky: str) -> str:
