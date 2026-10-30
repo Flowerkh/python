@@ -5,7 +5,20 @@ import requests
 
 from weather import WMO
 
-# 네이버 스포츠 스케줄 API. 키 불필요, 하루치 전 경기를 요청 1회로 받는다.
+# KBO 공식 홈페이지 메인 경기 목록 API. 키 불필요, 하루치 전 경기를 요청 1회로 받는다.
+# 주의: Referer·X-Requested-With 가 없으면 JSON 대신 HTML 에러 페이지가 온다.
+KBO_URL = "https://www.koreabaseball.com/ws/Main.asmx/GetKboGameList"
+KBO_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+    "Referer": "https://www.koreabaseball.com/",
+    "X-Requested-With": "XMLHttpRequest",
+}
+# GAME_STATE_SC: 1 경기전, 2 경기중, 3 종료, 4 취소
+KBO_STATE = {"1": "BEFORE", "2": "STARTED", "3": "RESULT", "4": "CANCEL"}
+
+# 네이버 스포츠 스케줄 API. KBO 홈페이지가 안 될 때의 폴백이다.
+# 서버(데이터센터 IP)에서는 응답 없이 붙잡혀 timeout 나므로 기본 소스로 쓰지 않는다.
 # 주의: superCategoryId=kbaseball 로는 0건이 온다. categoryId=kbo 여야 한다.
 SCHEDULE_URL = "https://api-gw.sports.naver.com/schedule/games"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -49,7 +62,42 @@ GAME_HOURS = 4
 _session = requests.Session()
 
 
-def _fetch_games(date: str) -> list:
+def _fetch_kbo_games(date: str) -> list:
+    """KBO 홈페이지 응답을 네이버 응답과 같은 모양으로 바꿔 돌려준다."""
+    response = _session.post(
+        KBO_URL,
+        data={"leId": 1, "srId": "0,1,3,4,5,6,7,8,9", "date": date.replace("-", "")},
+        headers=KBO_HEADERS,
+        timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+    )
+    response.raise_for_status()
+
+    games = []
+    for g in response.json()["game"]:
+        state = KBO_STATE.get(str(g.get("GAME_STATE_SC")), "STARTED")
+        if state == "CANCEL":
+            status_info = g.get("CANCEL_SC_NM") or "취소"
+        elif state == "STARTED" and g.get("GAME_INN_NO"):
+            status_info = f"{g['GAME_INN_NO']}회{g.get('GAME_TB_SC_NM') or ''}"
+        else:
+            status_info = "진행중"
+        games.append({
+            "gameDateTime": f"{date}T{g.get('G_TM', '')}:00",
+            "stadium": g.get("S_NM", "-"),
+            "awayTeamName": g.get("AWAY_NM", "?"),
+            "homeTeamName": g.get("HOME_NM", "?"),
+            "awayTeamScore": g.get("T_SCORE_CN", 0),
+            "homeTeamScore": g.get("B_SCORE_CN", 0),
+            "awayStarterName": (g.get("T_PIT_P_NM") or "").strip(),
+            "homeStarterName": (g.get("B_PIT_P_NM") or "").strip(),
+            "statusCode": state,
+            "statusInfo": status_info,
+            "cancel": state == "CANCEL",
+        })
+    return games
+
+
+def _fetch_naver_games(date: str) -> list:
     for attempt in range(1, SCHEDULE_RETRIES + 1):
         try:
             response = _session.get(
@@ -152,10 +200,14 @@ def get_kbo_games(date: str = None) -> dict:
     if date is None:
         date = today
 
+    errors = (requests.RequestException, ValueError, KeyError, TypeError)
     try:
-        games = _fetch_games(date)
-    except (requests.RequestException, ValueError, KeyError, TypeError) as e:
-        return {"error": f"KBO 일정 조회 실패: {e}"}
+        games = _fetch_kbo_games(date)
+    except errors as kbo_error:
+        try:
+            games = _fetch_naver_games(date)
+        except errors as naver_error:
+            return {"error": f"KBO 일정 조회 실패: KBO({kbo_error}), 네이버({naver_error})"}
 
     if not games:
         return {"lines": ["오늘은 경기가 없습니다"]}
