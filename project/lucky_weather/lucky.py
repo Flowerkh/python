@@ -31,15 +31,25 @@ def get_lucky() -> list:
     soup = BeautifulSoup(res.text, "html.parser")
 
     article = soup.find("article", id="article-view-content-div")
-    paragraphs = article.find_all("p")
 
-    lines = []
-    for p in paragraphs:
-        text = p.get_text(strip=True)
-        if "저작권은 지윤철학원에 있습니다" in text:
+    # 띠마다 <p>를 따로 쓰던 기사도, <p> 하나에 <br>로 12띠를 이어 붙인 기사도 있다.
+    # <p> 단위로 읽으면 후자는 한 줄이 되어 쥐띠만 남으므로,
+    # 본문을 이어 붙인 뒤 〈○○띠〉 표시로 나눈다.
+    texts = []
+    for text in article.get_text("\n").splitlines():
+        text = text.strip()
+        if not text or "저작권은 지윤철학원에 있습니다" in text:
             continue
-        if text:
-            lines.append(text)
+        texts.append(text)
+
+    parts = re.split(r"(〈[^〉]+띠〉)", " ".join(texts))
+    lines = []
+    for zodiac, body in zip(parts[1::2], parts[2::2]):
+        # 띠 본문 끝에 붙은 "운세지수 96%. 금전 95 건강 95 애정 95"는 따로 한 줄로 뺀다
+        body, _, luck_index = body.partition("운세지수")
+        lines.append(f"{zodiac}{body.strip()}")
+        if luck_index:
+            lines.append(f"운세지수{luck_index.rstrip()}")
 
     return _filter_first_sentence(lines)
 
